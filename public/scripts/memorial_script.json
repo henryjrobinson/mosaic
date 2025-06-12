@@ -1,0 +1,65 @@
+{
+  "title": "Memorial Conversation",
+  "description": "A script for a conversation about creating a memorial for a loved one",
+  "conversation": [
+    {
+      "type": "ai",
+      "message": "Hello, I'm so sorry for your loss. I'm here to help you create a beautiful memorial for your loved one. Can you tell me their name?",
+      "suggestions": ["Ramon", "Maria", "I prefer to type"]
+    },
+    {
+      "type": "user",
+      "message": "His name was Ramon. Dr. Ramon Serrano."
+    },
+    {
+      "type": "ai",
+      "message": "Thank you for sharing that with me. Can you tell me a bit about Ramon - what did he do for work, and what was your relationship to him?",
+      "suggestions": ["Spouse", "Professor", "Family member", "I prefer to type"]
+    },
+    {
+      "type": "user",
+      "message": "Ramon was my husband. We were married for almost 49 years. He was a professor at UCLA, taught statistics."
+    },
+    {
+      "type": "ai",
+      "message": "What a beautiful long marriage. I can only imagine how much you must miss him. Can you tell me about your family together?",
+      "suggestions": ["Children", "Family", "Close-knit", "I prefer to type"]
+    },
+    {
+      "type": "user",
+      "message": "We have two children together - Ramona, she's 45 now, and Ramon Jr., he's 42. Ramon adored them. He never missed helping with homework."
+    },
+    {
+      "type": "ai",
+      "message": "He sounds like such a dedicated father. What did Ramon love to do in his free time? What brought him joy?",
+      "suggestions": ["Hobbies", "Reading", "Travel", "I prefer to type"]
+    },
+    {
+      "type": "user",
+      "message": "Oh, he was such a nerd! He loved Star Trek - we must have watched every episode a hundred times. And books - science fiction, fantasy. On weekends, we'd go hiking."
+    },
+    {
+      "type": "ai",
+      "message": "What would you say people loved most about Ramon? What made him special?",
+      "suggestions": ["Personality", "Teaching", "Kindness", "I prefer to type"]
+    },
+    {
+      "type": "user",
+      "message": "His patience. Whether it was with his students, our children, or me. He never made anyone feel stupid. He had this way of breaking things down."
+    },
+    {
+      "type": "ai",
+      "message": "Thank you for sharing these beautiful memories, Maria. Based on what you've told me about your 49 years together, I think we could create a wonderful **Life Journey Timeline** that captures the major milestones of your life together. I can help guide you through the memories and we can include photos and stories from each period. Would you like to create this together?",
+      "suggestions": ["Yes, create timeline", "Tell me more", "Other options", "I prefer to type"]
+    },
+    {
+      "type": "user",
+      "message": "Yes, I'd love that. I have boxes of photos and I remember everything."
+    },
+    {
+      "type": "ai",
+      "message": "Wonderful! I'll help you create a Life Journey Timeline that tells the story of your 49 years together. Let me generate a preview of what this memorial object will look like with your memories...",
+      "final": true
+    }
+  ]
+}

@@ -1,0 +1,43 @@
+{
+  "title": "Welcome Tour",
+  "description": "A brief tour introducing the user to the platform",
+  "conversation": [
+    {
+      "type": "ai",
+      "message": "Welcome to Mosaic! I'm your guide to creating meaningful digital memorials. Would you like to see what's possible?",
+      "suggestions": ["Yes, show me", "How does it work?", "I already know"]
+    },
+    {
+      "type": "user",
+      "message": "How does it work?"
+    },
+    {
+      "type": "ai",
+      "message": "It's simple! We'll have a conversation about your loved one, and I'll help you create different memorial objects like timelines, galleries, or story collections. These can be shared with family and friends. What would you like to create today?",
+      "suggestions": ["Start a memorial", "See examples", "Just exploring"]
+    },
+    {
+      "type": "user",
+      "message": "See examples"
+    },
+    {
+      "type": "ai",
+      "message": "Here's an example of what a complete memorial looks like. It contains several objects created by family and friends that capture different aspects of a person's life and legacy.",
+      "showExample": "existing"
+    },
+    {
+      "type": "ai",
+      "message": "Would you like to start creating your own memorial now?",
+      "suggestions": ["Yes, let's begin", "Not right now", "More information"]
+    },
+    {
+      "type": "user",
+      "message": "Yes, let's begin"
+    },
+    {
+      "type": "ai",
+      "message": "Great! Let's get started on your memorial journey. I'm here to guide you through each step of the process.",
+      "final": true
+    }
+  ]
+}
