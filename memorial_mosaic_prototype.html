@@ -1,0 +1,638 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Memorial Mosaic - Create a Living Memorial</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        
+        .chat-container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            width: 100%;
+            max-width: 800px;
+            height: 600px;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        
+        .chat-header {
+            background: linear-gradient(135deg, #2c3e50, #34495e);
+            color: white;
+            padding: 20px;
+            text-align: center;
+        }
+        
+        .header-title {
+            font-size: 1.5em;
+            margin-bottom: 5px;
+        }
+        
+        .header-subtitle {
+            opacity: 0.8;
+            font-size: 0.9em;
+        }
+        
+        .header-actions {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            margin-top: 15px;
+        }
+        
+        .action-btn {
+            background: rgba(255,255,255,0.2);
+            border: 1px solid rgba(255,255,255,0.3);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 0.8em;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .action-btn:hover {
+            background: rgba(255,255,255,0.3);
+        }
+        
+        .chat-messages {
+            flex: 1;
+            padding: 20px;
+            overflow-y: auto;
+            background: #f8f9fa;
+        }
+        
+        .message {
+            margin-bottom: 20px;
+            display: flex;
+            opacity: 0;
+            transform: translateY(20px);
+            transition: all 0.5s ease;
+        }
+        
+        .message.show {
+            opacity: 1;
+            transform: translateY(0);
+        }
+        
+        .message.ai {
+            justify-content: flex-start;
+        }
+        
+        .message.user {
+            justify-content: flex-end;
+        }
+        
+        .message-bubble {
+            max-width: 70%;
+            padding: 15px 20px;
+            border-radius: 20px;
+            font-size: 0.95em;
+            line-height: 1.4;
+        }
+        
+        .message.ai .message-bubble {
+            background: linear-gradient(135deg, #3498db, #2980b9);
+            color: white;
+            border-bottom-left-radius: 5px;
+        }
+        
+        .message.user .message-bubble {
+            background: #e9ecef;
+            color: #333;
+            border-bottom-right-radius: 5px;
+        }
+        
+        .avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            margin: 0 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2em;
+            flex-shrink: 0;
+        }
+        
+        .ai .avatar {
+            background: linear-gradient(135deg, #27ae60, #229954);
+            color: white;
+        }
+        
+        .user .avatar {
+            background: linear-gradient(135deg, #f39c12, #e67e22);
+            color: white;
+        }
+        
+        .chat-input-area {
+            padding: 20px;
+            background: white;
+            border-top: 1px solid #e9ecef;
+        }
+        
+        .suggested-responses {
+            display: none;
+            gap: 10px;
+            margin-bottom: 15px;
+            flex-wrap: wrap;
+        }
+        
+        .suggested-responses.show {
+            display: flex;
+        }
+        
+        .suggested-response {
+            background: #f8f9fa;
+            border: 1px solid #e9ecef;
+            padding: 10px 15px;
+            border-radius: 20px;
+            font-size: 0.9em;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .suggested-response:hover {
+            background: #e9ecef;
+        }
+        
+        .input-container {
+            display: flex;
+            gap: 10px;
+        }
+        
+        .chat-input {
+            flex: 1;
+            padding: 15px 20px;
+            border: 1px solid #e9ecef;
+            border-radius: 25px;
+            font-size: 0.95em;
+            outline: none;
+        }
+        
+        .send-btn {
+            background: linear-gradient(135deg, #3498db, #2980b9);
+            color: white;
+            border: none;
+            padding: 15px 25px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 0.95em;
+            transition: all 0.3s;
+        }
+        
+        .send-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(52, 152, 219, 0.3);
+        }
+        
+        .tap-hint {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0,0,0,0.7);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 20px;
+            font-size: 0.9em;
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 0.7; }
+            50% { opacity: 1; }
+        }
+        
+        .object-preview {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.8);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        .object-preview.show {
+            display: flex;
+        }
+        
+        .preview-content {
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            max-width: 600px;
+            text-align: center;
+            position: relative;
+        }
+        
+        .close-btn {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            background: none;
+            border: none;
+            font-size: 1.5em;
+            cursor: pointer;
+            color: #666;
+        }
+        
+        .object-placeholder {
+            width: 400px;
+            height: 300px;
+            background: linear-gradient(135deg, #f8f9fa, #e9ecef);
+            border: 2px dashed #dee2e6;
+            border-radius: 12px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            margin: 20px auto;
+            color: #6c757d;
+        }
+        
+        .placeholder-icon {
+            font-size: 3em;
+            margin-bottom: 10px;
+        }
+        
+        .typing-indicator {
+            display: none;
+            align-items: center;
+            gap: 10px;
+            color: #666;
+            font-style: italic;
+            margin-top: 10px;
+        }
+        
+        .typing-indicator.show {
+            display: flex;
+        }
+        
+        .typing-dots {
+            display: flex;
+            gap: 3px;
+        }
+        
+        .typing-dot {
+            width: 6px;
+            height: 6px;
+            background: #666;
+            border-radius: 50%;
+            animation: typing 1.4s infinite;
+        }
+        
+        .typing-dot:nth-child(2) { animation-delay: 0.2s; }
+        .typing-dot:nth-child(3) { animation-delay: 0.4s; }
+        
+        @keyframes typing {
+            0%, 60%, 100% { transform: translateY(0); }
+            30% { transform: translateY(-10px); }
+        }
+    </style>
+</head>
+<body>
+    <div class="chat-container">
+        <div class="chat-header">
+            <div class="header-title">Memorial Mosaic</div>
+            <div class="header-subtitle">Creating a living memorial together</div>
+            <div class="header-actions">
+                <button class="action-btn" onclick="showExample('existing')">View Example Memorial</button>
+                <button class="action-btn" onclick="showExample('current')">Current Progress</button>
+            </div>
+        </div>
+        
+        <div class="chat-messages" id="chat-messages">
+            <!-- Messages will be added here -->
+        </div>
+        
+        <div class="chat-input-area">
+            <div class="suggested-responses" id="suggested-responses">
+                <!-- Suggested responses will appear here -->
+            </div>
+            
+            <div class="typing-indicator" id="typing-indicator">
+                <span>AI is thinking</span>
+                <div class="typing-dots">
+                    <div class="typing-dot"></div>
+                    <div class="typing-dot"></div>
+                    <div class="typing-dot"></div>
+                </div>
+            </div>
+            
+            <div class="input-container">
+                <input type="text" class="chat-input" placeholder="Type your message..." id="chat-input">
+                <button class="send-btn" onclick="handleInput()">Send</button>
+            </div>
+        </div>
+    </div>
+    
+    <div class="tap-hint" id="tap-hint">Tap anywhere to continue the conversation</div>
+    
+    <div class="object-preview" id="object-preview">
+        <div class="preview-content">
+            <button class="close-btn" onclick="closePreview()">&times;</button>
+            <h2 id="preview-title">Memorial Object Preview</h2>
+            <div class="object-placeholder">
+                <div class="placeholder-icon">📋</div>
+                <div>Object Preview</div>
+                <div style="font-size: 0.8em; margin-top: 5px;">Will show generated content here</div>
+            </div>
+            <p id="preview-description">This is where the completed memorial object would be displayed.</p>
+        </div>
+    </div>
+
+    <script>
+        let currentStep = 0;
+        let conversationData = {};
+        
+        const conversation = [
+            {
+                type: 'ai',
+                message: "Hello, I'm so sorry for your loss. I'm here to help you create a beautiful memorial for your loved one. Can you tell me their name?",
+                suggestions: ["Ramon", "Maria", "I prefer to type"]
+            },
+            {
+                type: 'user',
+                message: "His name was Ramon. Dr. Ramon Serrano."
+            },
+            {
+                type: 'ai',
+                message: "Thank you for sharing that with me. Can you tell me a bit about Ramon - what did he do for work, and what was your relationship to him?",
+                suggestions: ["Spouse", "Professor", "Family member", "I prefer to type"]
+            },
+            {
+                type: 'user',
+                message: "Ramon was my husband. We were married for almost 49 years. He was a professor at UCLA, taught statistics."
+            },
+            {
+                type: 'ai',
+                message: "What a beautiful long marriage. I can only imagine how much you must miss him. Can you tell me about your family together?",
+                suggestions: ["Children", "Family", "Close-knit", "I prefer to type"]
+            },
+            {
+                type: 'user',
+                message: "We have two children together - Ramona, she's 45 now, and Ramon Jr., he's 42. Ramon adored them. He never missed helping with homework."
+            },
+            {
+                type: 'ai',
+                message: "He sounds like such a dedicated father. What did Ramon love to do in his free time? What brought him joy?",
+                suggestions: ["Hobbies", "Reading", "Travel", "I prefer to type"]
+            },
+            {
+                type: 'user',
+                message: "Oh, he was such a nerd! He loved Star Trek - we must have watched every episode a hundred times. And books - science fiction, fantasy. On weekends, we'd go hiking."
+            },
+            {
+                type: 'ai',
+                message: "What would you say people loved most about Ramon? What made him special?",
+                suggestions: ["Personality", "Teaching", "Kindness", "I prefer to type"]
+            },
+            {
+                type: 'user',
+                message: "His patience. Whether it was with his students, our children, or me. He never made anyone feel stupid. He had this way of breaking things down."
+            },
+            {
+                type: 'ai',
+                message: "Thank you for sharing these beautiful memories, Maria. Based on what you've told me about your 49 years together, I think we could create a wonderful **Life Journey Timeline** that captures the major milestones of your life together. I can help guide you through the memories and we can include photos and stories from each period. Would you like to create this together?",
+                suggestions: ["Yes, create timeline", "Tell me more", "Other options", "I prefer to type"]
+            },
+            {
+                type: 'user',
+                message: "Yes, I'd love that. I have boxes of photos and I remember everything."
+            },
+            {
+                type: 'ai',
+                message: "Wonderful! I'll help you create a Life Journey Timeline that tells the story of your 49 years together. Let me generate a preview of what this memorial object will look like with your memories...",
+                final: true
+            }
+        ];
+        
+        function addMessage(type, message, showSuggestions = false, suggestions = []) {
+            const messagesContainer = document.getElementById('chat-messages');
+            
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${type}`;
+            
+            const avatar = document.createElement('div');
+            avatar.className = 'avatar';
+            avatar.textContent = type === 'ai' ? '🤖' : '👤';
+            
+            const bubble = document.createElement('div');
+            bubble.className = 'message-bubble';
+            bubble.textContent = message;
+            
+            if (type === 'ai') {
+                messageDiv.appendChild(avatar);
+                messageDiv.appendChild(bubble);
+            } else {
+                messageDiv.appendChild(bubble);
+                messageDiv.appendChild(avatar);
+            }
+            
+            messagesContainer.appendChild(messageDiv);
+            
+            setTimeout(() => {
+                messageDiv.classList.add('show');
+                messagesContainer.scrollTop = messagesContainer.scrollHeight;
+                
+                if (showSuggestions && suggestions.length > 0) {
+                    showSuggestedResponses(suggestions);
+                }
+            }, 100);
+        }
+        
+        function showSuggestedResponses(suggestions) {
+            const suggestionsContainer = document.getElementById('suggested-responses');
+            suggestionsContainer.innerHTML = '';
+            
+            suggestions.forEach(suggestion => {
+                const btn = document.createElement('button');
+                btn.className = 'suggested-response';
+                btn.textContent = suggestion;
+                btn.onclick = () => selectSuggestion(suggestion);
+                suggestionsContainer.appendChild(btn);
+            });
+            
+            suggestionsContainer.classList.add('show');
+        }
+        
+        function selectSuggestion(text) {
+            document.getElementById('chat-input').value = text;
+            handleInput();
+        }
+        
+        function showTyping() {
+            document.getElementById('typing-indicator').classList.add('show');
+        }
+        
+        function hideTyping() {
+            document.getElementById('typing-indicator').classList.remove('show');
+        }
+        
+        function hideSuggestions() {
+            document.getElementById('suggested-responses').classList.remove('show');
+        }
+        
+        function nextStep() {
+            if (currentStep < conversation.length) {
+                const step = conversation[currentStep];
+                
+                if (step.type === 'ai') {
+                    showTyping();
+                    setTimeout(() => {
+                        hideTyping();
+                        addMessage('ai', step.message, !!step.suggestions, step.suggestions || []);
+                        
+                        if (step.final) {
+                            setTimeout(() => {
+                                showObjectPreview();
+                            }, 2000);
+                        }
+                    }, 1500);
+                } else {
+                    hideSuggestions();
+                    addMessage('user', step.message);
+                }
+                
+                currentStep++;
+            }
+        }
+        
+        function handleInput() {
+            const input = document.getElementById('chat-input');
+            const message = input.value.trim();
+            
+            if (message) {
+                hideSuggestions();
+                addMessage('user', message);
+                input.value = '';
+                
+                setTimeout(() => {
+                    nextStep();
+                }, 1000);
+            }
+        }
+        
+        function showObjectPreview() {
+            document.getElementById('preview-title').textContent = 'Life Journey Timeline - Preview';
+            document.getElementById('preview-description').textContent = 'Your Life Journey Timeline is ready! This interactive timeline will showcase the major milestones of your 49 years together, with photos and stories from each period.';
+            
+            const placeholder = document.querySelector('.object-placeholder');
+            placeholder.innerHTML = `
+                <div class="placeholder-icon">📅</div>
+                <div><strong>Life Journey Timeline</strong></div>
+                <div style="font-size: 0.8em; margin-top: 5px;">1976-2025: 49 Years Together</div>
+                <div style="font-size: 0.7em; margin-top: 10px; color: #999;">Interactive timeline with photos, stories, and milestones</div>
+            `;
+            
+            document.getElementById('object-preview').classList.add('show');
+            document.getElementById('tap-hint').style.display = 'none';
+        }
+        
+        function closePreview() {
+            document.getElementById('object-preview').classList.remove('show');
+        }
+        
+        function showExample(type) {
+            if (type === 'existing') {
+                document.getElementById('preview-title').textContent = 'Example: Complete Memorial Mosaic';
+                document.getElementById('preview-description').textContent = 'This is an example of a complete memorial with multiple objects created by family and friends.';
+                
+                const placeholder = document.querySelector('.object-placeholder');
+                placeholder.innerHTML = `
+                    <div class="placeholder-icon">🏛️</div>
+                    <div><strong>Example Memorial</strong></div>
+                    <div style="font-size: 0.8em; margin-top: 5px;">Dr. Sarah Chen (1952-2023)</div>
+                    <div style="font-size: 0.7em; margin-top: 10px; color: #999;">Timeline, Gallery, Impact Stories, Voice Memories</div>
+                `;
+            } else {
+                document.getElementById('preview-title').textContent = 'Current Progress';
+                document.getElementById('preview-description').textContent = 'Your memorial is just getting started. As we continue, you\'ll see your objects appear here.';
+                
+                const placeholder = document.querySelector('.object-placeholder');
+                placeholder.innerHTML = `
+                    <div class="placeholder-icon">🚧</div>
+                    <div><strong>In Progress</strong></div>
+                    <div style="font-size: 0.8em; margin-top: 5px;">Dr. Ramon Serrano</div>
+                    <div style="font-size: 0.7em; margin-top: 10px; color: #999;">Building your Life Journey Timeline...</div>
+                `;
+            }
+            
+            document.getElementById('object-preview').classList.add('show');
+        }
+        
+        // Event listeners - wrapped in function to ensure elements exist
+        function setupEventListeners() {
+            // Click anywhere to advance conversation (except on buttons/inputs that have their own handlers)
+            document.addEventListener('click', function(e) {
+                if (!e.target.closest('.action-btn') && 
+                    !e.target.closest('.close-btn') && 
+                    !e.target.closest('.object-preview') &&
+                    currentStep < conversation.length && 
+                    !document.getElementById('object-preview').classList.contains('show')) {
+                    advanceConversation();
+                }
+            });
+            
+            document.getElementById('chat-input').addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    advanceConversation();
+                }
+            });
+            
+            // Prevent the click anywhere from triggering when clicking input elements
+            document.getElementById('chat-input').addEventListener('click', function(e) {
+                e.stopPropagation();
+                advanceConversation();
+            });
+            
+            document.querySelector('.send-btn').addEventListener('click', function(e) {
+                e.stopPropagation();
+                advanceConversation();
+            });
+        }
+        
+        // Initialize everything when page loads
+        document.addEventListener('DOMContentLoaded', function() {
+            setupEventListeners();
+            
+            // Start the conversation
+            setTimeout(() => {
+                nextStep();
+            }, 1000);
+        });
+        
+        // Fallback for if DOMContentLoaded already fired
+        if (document.readyState === 'loading') {
+            // Do nothing, DOMContentLoaded will fire
+        } else {
+            setupEventListeners();
+            setTimeout(() => {
+                nextStep();
+            }, 1000);
+        }
+    </script>
+</body>
+</html>
