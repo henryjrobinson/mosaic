@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Memorial Mosaic - Create a beautiful digital memorial to remember and celebrate the life of your loved one.">
+    <title>Memorial Mosaic - Create a Living Memorial</title>
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+    <div class="chat-container">
+        <div class="chat-header">
+            <div class="header-title">Memorial Mosaic</div>
+            <div class="header-subtitle">Creating a living memorial together</div>
+            <div class="header-actions">
+                <button class="action-btn" onclick="showExample('existing')">View Example Memorial</button>
+                <button class="action-btn" onclick="showExample('current')">Current Progress</button>
+            </div>
+            
+            <div class="script-controls" id="script-controls">
+                <label for="script-selector">Select Script: </label>
+                <select id="script-selector">
+                    <!-- Options will be populated dynamically -->
+                </select>
+                <button id="reset-script" class="reset-btn">Reset</button>
+            </div>
+        </div>
+        
+        <div class="chat-messages" id="chat-messages">
+            <!-- Messages will be added here -->
+        </div>
+        
+        <div class="chat-input-area">
+            <div class="suggested-responses" id="suggested-responses">
+                <!-- Suggested responses will appear here -->
+            </div>
+            
+            <div class="typing-indicator" id="typing-indicator">
+                <span>AI is thinking</span>
+                <div class="typing-dots">
+                    <div class="typing-dot"></div>
+                    <div class="typing-dot"></div>
+                    <div class="typing-dot"></div>
+                </div>
+            </div>
+            
+            <div class="input-container">
+                <input type="text" class="chat-input" placeholder="Type your message..." id="chat-input">
+                <button class="send-btn" onclick="handleInput()">Send</button>
+            </div>
+        </div>
+    </div>
+    
+    <div class="tap-hint" id="tap-hint">Tap anywhere to continue the conversation</div>
+    
+    <div class="object-preview" id="object-preview">
+        <div class="preview-content">
+            <button class="close-btn" onclick="closePreview()">&times;</button>
+            <h2 id="preview-title">Memorial Object Preview</h2>
+            <div class="object-placeholder">
+                <div class="placeholder-icon">📋</div>
+                <div>Object Preview</div>
+                <div style="font-size: 0.8em; margin-top: 5px;">Will show generated content here</div>
+            </div>
+            <p id="preview-description">This is where the completed memorial object would be displayed.</p>
+        </div>
+    </div>
+
+    <script src="js/app.js"></script>
+</body>
+</html>
