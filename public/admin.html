@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Memorial Mosaic - Admin</title>
+    <link rel="stylesheet" href="css/styles.css">
+    <style>
+        /* Admin-specific styles */
+        .admin-container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            width: 100%;
+            max-width: 800px;
+            min-height: 600px;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .admin-header {
+            background: linear-gradient(135deg, #764ba2 0%, #667eea 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 20px 20px 0 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .admin-title {
+            font-size: 1.5em;
+            font-weight: 600;
+        }
+
+        .admin-content {
+            padding: 20px;
+            flex: 1;
+            overflow-y: auto;
+        }
+
+        .admin-section {
+            margin-bottom: 30px;
+        }
+
+        .admin-section h2 {
+            margin-bottom: 15px;
+            color: #764ba2;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 10px;
+        }
+
+        .script-list {
+            list-style: none;
+            padding: 0;
+        }
+
+        .script-item {
+            padding: 15px;
+            margin-bottom: 10px;
+            border: 1px solid #eee;
+            border-radius: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: all 0.3s ease;
+        }
+
+        .script-item:hover {
+            background-color: #f9f9f9;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.05);
+        }
+
+        .script-info {
+            flex: 1;
+        }
+
+        .script-title {
+            font-weight: 600;
+            font-size: 1.1em;
+            color: #333;
+        }
+
+        .script-description {
+            font-size: 0.9em;
+            color: #666;
+            margin-top: 5px;
+        }
+
+        .script-actions {
+            display: flex;
+            gap: 10px;
+        }
+
+        .btn-action {
+            padding: 8px 12px;
+            border-radius: 5px;
+            border: none;
+            background-color: #764ba2;
+            color: white;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+
+        .btn-action:hover {
+            background-color: #667eea;
+        }
+
+        .btn-upload {
+            background-color: #2ecc71;
+        }
+
+        .btn-upload:hover {
+            background-color: #27ae60;
+        }
+
+        .file-upload {
+            display: none;
+        }
+        
+        .back-to-app {
+            background-color: transparent;
+            border: 1px solid white;
+            padding: 8px 15px;
+            border-radius: 5px;
+            color: white;
+            text-decoration: none;
+            transition: all 0.3s ease;
+        }
+        
+        .back-to-app:hover {
+            background-color: rgba(255,255,255,0.2);
+        }
+
+        .drag-area {
+            border: 2px dashed #764ba2;
+            height: 200px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            margin: 20px 0;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .drag-area.active {
+            border-color: #2ecc71;
+            background-color: rgba(46, 204, 113, 0.1);
+        }
+
+        .drag-area .icon {
+            font-size: 50px;
+            color: #764ba2;
+        }
+
+        .drag-area .header {
+            font-size: 20px;
+            font-weight: 500;
+            color: #333;
+        }
+
+        .drag-area .support {
+            font-size: 14px;
+            color: #666;
+            margin: 10px 0;
+        }
+
+        .status-message {
+            text-align: center;
+            padding: 10px;
+            margin-top: 10px;
+            border-radius: 5px;
+            display: none;
+        }
+
+        .status-message.success {
+            background-color: rgba(46, 204, 113, 0.2);
+            color: #27ae60;
+            display: block;
+        }
+
+        .status-message.error {
+            background-color: rgba(231, 76, 60, 0.2);
+            color: #c0392b;
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <div class="admin-container">
+        <div class="admin-header">
+            <div class="admin-title">Memorial Mosaic Admin</div>
+            <a href="index.html" class="back-to-app">Back to App</a>
+        </div>
+        
+        <div class="admin-content">
+            <div class="admin-section">
+                <h2>Script Management</h2>
+                
+                <div class="drag-area">
+                    <div class="icon">📄</div>
+                    <div class="header">Drag & Drop Script Files</div>
+                    <div class="support">or</div>
+                    <button class="btn-action btn-upload">Browse Files</button>
+                    <input type="file" class="file-upload" accept=".json" multiple>
+                </div>
+                
+                <div class="status-message"></div>
+            </div>
+            
+            <div class="admin-section">
+                <h2>Available Scripts</h2>
+                <ul id="script-list" class="script-list">
+                    <!-- Scripts will be populated here -->
+                </ul>
+            </div>
+        </div>
+    </div>
+    
+    <script src="js/admin.js"></script>
+</body>
+</html>

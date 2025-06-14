@@ -5,25 +5,61 @@ let availableScripts = [];
 let conversation = [];
 
 /**
- * Fetches the list of available scripts
+ * Fetches the list of available scripts from both server and localStorage
  * @returns {Promise} Promise resolving to array of script metadata
  */
 async function fetchAvailableScripts() {
     try {
-        // In a real app, this would be an API call
-        // For now, we'll hardcode our two example scripts
-        return [
+        // Get scripts from server
+        const serverScripts = [
             {
                 id: 'memorial_script',
                 path: './scripts/memorial_script.json',
-                title: 'Memorial Conversation'
+                title: 'Memorial Conversation',
+                source: 'server'
             },
             {
                 id: 'welcome_script',
                 path: './scripts/welcome_script.json',
-                title: 'Welcome Tour'
+                title: 'Welcome Tour',
+                source: 'server'
             }
         ];
+        
+        // Get scripts from localStorage (added via admin page)
+        const localScripts = [];
+        for (let i = 0; i < localStorage.length; i++) {
+            const key = localStorage.key(i);
+            if (key.startsWith('memorial_script_')) {
+                try {
+                    const scriptData = JSON.parse(localStorage.getItem(key));
+                    const scriptId = key.replace('memorial_script_', '');
+                    
+                    localScripts.push({
+                        id: scriptId,
+                        title: scriptData.metadata?.title || scriptId,
+                        source: 'local',
+                        data: scriptData
+                    });
+                } catch (e) {
+                    console.error(`Error parsing script from localStorage (${key}):`, e);
+                }
+            }
+        }
+        
+        // Combine scripts, with local versions taking precedence
+        const combinedScripts = [...serverScripts];
+        
+        localScripts.forEach(localScript => {
+            const existingIndex = combinedScripts.findIndex(s => s.id === localScript.id);
+            if (existingIndex >= 0) {
+                combinedScripts[existingIndex] = localScript;
+            } else {
+                combinedScripts.push(localScript);
+            }
+        });
+        
+        return combinedScripts;
     } catch (error) {
         console.error('Error fetching available scripts:', error);
         return [];
@@ -43,6 +79,15 @@ async function loadScript(scriptId) {
             throw new Error(`Script with ID ${scriptId} not found`);
         }
         
+        // Check if this is a locally stored script (from admin page)
+        if (scriptToLoad.source === 'local' && scriptToLoad.data) {
+            console.log(`Loading script ${scriptToLoad.title} from localStorage`);
+            const scriptData = scriptToLoad.data;
+            initializeConversation(scriptData);
+            return scriptData;
+        }
+        
+        // Otherwise load from server path
         console.log(`Found script: ${scriptToLoad.title}, fetching from ${scriptToLoad.path}`);
         const response = await fetch(scriptToLoad.path);
         if (!response.ok) {
@@ -60,9 +105,6 @@ async function loadScript(scriptId) {
         
         // Clear any existing messages
         document.getElementById('chat-messages').innerHTML = '';
-        
-        // Update script selector to match current script
-        document.getElementById('script-selector').value = scriptId;
         
         // Start the conversation
         setTimeout(() => {
@@ -114,26 +156,18 @@ function showError(message) {
 }
 
 /**
- * Populates the script selector dropdown
- * @param {Array} scripts - Array of available scripts
+ * Checks for active script selected in admin page
+ * @returns {string|null} - ID of active script or null if none selected
  */
-function populateScriptSelector(scripts) {
-    const selector = document.getElementById('script-selector');
-    selector.innerHTML = '';
-    
-    scripts.forEach(script => {
-        const option = document.createElement('option');
-        option.value = script.id;
-        option.textContent = script.title;
-        selector.appendChild(option);
-    });
+function getActiveScriptFromAdmin() {
+    return localStorage.getItem('active_script_id');
 }
 
 /**
  * Chat UI Controller
  * @param {string} type - 'ai' or 'user'
  * @param {string} message - Message content
- * @param {boolean} showSuggestions - Whether to show suggested responses
+ * @param {boolean} showSuggestions - Whether to show suggested responses (now disabled per requirements)
  * @param {Array} suggestions - Array of suggestion strings
  */
 function addMessage(type, message, showSuggestions = false, suggestions = []) {
@@ -164,38 +198,30 @@ function addMessage(type, message, showSuggestions = false, suggestions = []) {
         messageDiv.classList.add('show');
         messagesContainer.scrollTop = messagesContainer.scrollHeight;
         
-        if (showSuggestions && suggestions.length > 0) {
-            showSuggestedResponses(suggestions);
-        }
+        // Suggestions have been disabled per requirements
+        // Keeping the suggestions in the data model but not displaying them
     }, 100);
 }
 
 /**
  * Displays suggested responses as clickable buttons
  * @param {Array} suggestions - Array of suggestion strings
+ * Note: This function is now disabled per requirements but kept for future reference
  */
 function showSuggestedResponses(suggestions) {
-    const suggestionsContainer = document.getElementById('suggested-responses');
-    suggestionsContainer.innerHTML = '';
-    
-    suggestions.forEach(suggestion => {
-        const btn = document.createElement('button');
-        btn.className = 'suggested-response';
-        btn.textContent = suggestion;
-        btn.onclick = () => selectSuggestion(suggestion);
-        suggestionsContainer.appendChild(btn);
-    });
-    
-    suggestionsContainer.classList.add('show');
+    // Suggestions are now disabled per requirements
+    // This function is kept for future reference/re-enablement if needed
+    return;
 }
 
 /**
  * Handles when a suggestion is selected
  * @param {string} text - The suggestion text
+ * Note: This function has been disabled per requirements but kept for reference
  */
 function selectSuggestion(text) {
-    document.getElementById('chat-input').value = text;
-    handleInput();
+    // Suggestions functionality disabled
+    return;
 }
 
 /**
@@ -214,9 +240,11 @@ function hideTyping() {
 
 /**
  * Hides the suggested responses
+ * Note: This function has been disabled per requirements but kept for reference
  */
 function hideSuggestions() {
-    document.getElementById('suggested-responses').classList.remove('show');
+    // Suggestions functionality disabled
+    return;
 }
 
 /**
@@ -230,7 +258,8 @@ function nextStep() {
             showTyping();
             setTimeout(() => {
                 hideTyping();
-                addMessage('ai', step.message, !!step.suggestions, step.suggestions || []);
+                // Removed suggestions display functionality, passing false for showSuggestions
+                addMessage('ai', step.message, false, []);
                 
                 if (step.final) {
                     setTimeout(() => {
@@ -262,7 +291,7 @@ function handleInput() {
     const message = input.value.trim();
     
     if (message) {
-        hideSuggestions();
+        // Removed hideSuggestions call as suggestions functionality is disabled
         addMessage('user', message);
         input.value = '';
         
@@ -353,7 +382,6 @@ function setupEventListeners() {
         if (!e.target.closest('.action-btn') && 
             !e.target.closest('.close-btn') && 
             !e.target.closest('.object-preview') &&
-            !e.target.closest('#script-controls') &&
             currentStep < conversation.length && 
             !document.getElementById('object-preview').classList.contains('show')) {
             advanceConversation();
@@ -374,18 +402,6 @@ function setupEventListeners() {
     document.querySelector('.send-btn').addEventListener('click', function(e) {
         e.stopPropagation();
         advanceConversation();
-    });
-    
-    // Script selector change event
-    document.getElementById('script-selector').addEventListener('change', function(e) {
-        e.stopPropagation();
-        loadScript(this.value);
-    });
-    
-    // Reset script button
-    document.getElementById('reset-script').addEventListener('click', function(e) {
-        e.stopPropagation();
-        loadScript(document.getElementById('script-selector').value);
     });
 }
 
@@ -409,14 +425,20 @@ async function initializeApp() {
         }
         
         showSystemMessage(`Found ${availableScripts.length} scripts`, 'success');
-        populateScriptSelector(availableScripts);
         
-        // Show the script controls
-        document.getElementById('script-controls').classList.add('show');
+        // Check if a specific script was selected from admin page
+        const activeScriptId = getActiveScriptFromAdmin();
         
-        // Load the default script
-        await loadScript(availableScripts[0].id);
-        showSystemMessage(`Loaded script: ${availableScripts[0].title}`, 'success');
+        if (activeScriptId) {
+            // Load the script selected in admin
+            await loadScript(activeScriptId);
+            const activeScript = availableScripts.find(s => s.id === activeScriptId);
+            showSystemMessage(`Loaded script: ${activeScript?.title || activeScriptId}`, 'success');
+        } else {
+            // Load the default script if none selected
+            await loadScript(availableScripts[0].id);
+            showSystemMessage(`Loaded script: ${availableScripts[0].title}`, 'success');
+        }
     } catch (error) {
         console.error('Error during initialization:', error);
         showError(`Initialization failed: ${error.message}`);

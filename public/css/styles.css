@@ -104,59 +104,33 @@ body {
     background: rgba(255,255,255,0.3);
 }
 
-.script-controls {
-    background: rgba(0,0,0,0.1);
-    margin-top: 15px;
-    padding: 10px;
-    border-radius: var(--border-radius-sm);
-    display: none;
-    flex-wrap: wrap;
-    gap: 10px;
-    align-items: center;
-    justify-content: center;
+.admin-link {
+    background: rgba(118, 75, 162, 0.7);
+    color: white;
+    text-decoration: none;
+    padding: 6px 15px;
+    border-radius: 15px;
+    font-size: 0.85em;
+    margin-left: 10px;
     transition: var(--transition-medium);
+    border: 1px solid rgba(255,255,255,0.2);
+    display: inline-flex;
+    align-items: center;
+}
+
+.admin-link:hover {
+    background: rgba(118, 75, 162, 0.9);
+    transform: translateY(-2px);
+    box-shadow: 0 3px 8px rgba(0,0,0,0.2);
+}
+
+/* Keep minimal script controls for script loading indicator */
+.script-controls {
+    display: none;
 }
 
 .script-controls.show {
-    display: flex;
-}
-
-.script-controls label {
-    font-size: 0.9em;
-    font-weight: 500;
-    color: rgba(255,255,255,0.9);
-}
-
-#script-selector {
-    padding: 6px 12px;
-    border-radius: 15px;
-    border: 1px solid rgba(255,255,255,0.2);
-    background: rgba(255,255,255,0.1);
-    color: white;
-    font-size: 0.85em;
-    outline: none;
-    cursor: pointer;
-    transition: var(--transition-medium);
-}
-
-#script-selector:focus {
-    background: rgba(255,255,255,0.2);
-    border-color: rgba(255,255,255,0.3);
-}
-
-.reset-btn {
-    background: rgba(255,255,255,0.15);
-    border: 1px solid rgba(255,255,255,0.2);
-    color: white;
-    padding: 6px 12px;
-    border-radius: 15px;
-    font-size: 0.85em;
-    cursor: pointer;
-    transition: var(--transition-medium);
-}
-
-.reset-btn:hover {
-    background: rgba(255,255,255,0.25);
+    display: block;
 }
 
 .chat-messages {
@@ -364,15 +338,16 @@ body {
 }
 
 .suggested-responses {
-    display: none;
+    display: none !important; /* Permanently hidden with !important */
     gap: 10px;
     margin-bottom: 15px;
     flex-wrap: wrap;
     padding-top: 10px;
 }
 
+/* .show class is ignored to keep suggestions hidden */
 .suggested-responses.show {
-    display: flex;
+    display: none !important;
 }
 
 .suggested-response {
