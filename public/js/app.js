@@ -206,11 +206,16 @@ function addMessage(type, message, showSuggestions = false, suggestions = []) {
 /**
  * Displays suggested responses as clickable buttons
  * @param {Array} suggestions - Array of suggestion strings
- * Note: This function is now disabled per requirements but kept for future reference
+ * Note: This function is completely disabled
  */
 function showSuggestedResponses(suggestions) {
-    // Suggestions are now disabled per requirements
-    // This function is kept for future reference/re-enablement if needed
+    // Force remove any existing suggestion elements
+    const suggestionsContainer = document.getElementById('suggested-responses');
+    if (suggestionsContainer) {
+        // Empty the container and remove any classes that would make it visible
+        suggestionsContainer.innerHTML = '';
+        suggestionsContainer.classList.remove('show');
+    }
     return;
 }
 
@@ -240,11 +245,18 @@ function hideTyping() {
 
 /**
  * Hides the suggested responses
- * Note: This function has been disabled per requirements but kept for reference
+ * Completely removes any suggestion elements
  */
 function hideSuggestions() {
-    // Suggestions functionality disabled
-    return;
+    const suggestionsContainer = document.getElementById('suggested-responses');
+    if (suggestionsContainer) {
+        // Empty and hide
+        suggestionsContainer.innerHTML = '';
+        suggestionsContainer.classList.remove('show');
+        
+        // Add style to ensure it's really hidden
+        suggestionsContainer.style.display = 'none';
+    }
 }
 
 /**
@@ -445,14 +457,58 @@ async function initializeApp() {
     }
 }
 
+/**
+ * Remove all suggestion elements from the DOM
+ */
+function clearAllSuggestionElements() {
+    // Clear the suggestion container
+    const suggestionsContainer = document.getElementById('suggested-responses');
+    if (suggestionsContainer) {
+        suggestionsContainer.innerHTML = '';
+        suggestionsContainer.style.display = 'none';
+        suggestionsContainer.classList.remove('show');
+    }
+    
+    // Remove any suggestion buttons that might exist elsewhere
+    document.querySelectorAll('.suggested-response').forEach(button => {
+        button.remove();
+    });
+}
+
 // Initialize everything when page loads
 document.addEventListener('DOMContentLoaded', function() {
+    // Clear any suggestion elements first
+    clearAllSuggestionElements();
     initializeApp();
 });
 
-// Fallback for if DOMContentLoaded already fired
+// Set up a MutationObserver to detect and remove any dynamically added suggestion elements
+const observer = new MutationObserver(mutations => {
+    mutations.forEach(mutation => {
+        if (mutation.addedNodes && mutation.addedNodes.length > 0) {
+            // Check for suggestion elements in added nodes
+            for (let i = 0; i < mutation.addedNodes.length; i++) {
+                const node = mutation.addedNodes[i];
+                if (node.nodeType === 1) { // Element node
+                    // Check if this is a suggestion element
+                    if (node.classList && node.classList.contains('suggested-response')) {
+                        node.remove();
+                    }
+                    // Also look for suggestion elements inside the added node
+                    const suggestionButtons = node.querySelectorAll('.suggested-response');
+                    suggestionButtons.forEach(button => button.remove());
+                }
+            }
+        }
+    });
+});
+
+// Start observing once DOM is loaded
 if (document.readyState === 'loading') {
-    // Do nothing, DOMContentLoaded will fire
+    document.addEventListener('DOMContentLoaded', () => {
+        observer.observe(document.body, { childList: true, subtree: true });
+    });
 } else {
+    observer.observe(document.body, { childList: true, subtree: true });
     initializeApp();
 }
