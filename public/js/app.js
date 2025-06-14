@@ -266,11 +266,17 @@ function nextStep() {
     if (currentStep < conversation.length) {
         const step = conversation[currentStep];
         
+        // Remove any suggestions from the step data
+        if (step.suggestions) {
+            // Delete the suggestions property completely to ensure it's never processed
+            delete step.suggestions;
+        }
+        
         if (step.type === 'ai') {
             showTyping();
             setTimeout(() => {
                 hideTyping();
-                // Removed suggestions display functionality, passing false for showSuggestions
+                // Always pass false and empty array for suggestions to ensure they never show
                 addMessage('ai', step.message, false, []);
                 
                 if (step.final) {
@@ -287,7 +293,7 @@ function nextStep() {
                 }
             }, 1500);
         } else {
-            hideSuggestions();
+            // No need to call hideSuggestions since we've permanently removed them
             addMessage('user', step.message);
         }
         
@@ -457,53 +463,15 @@ async function initializeApp() {
     }
 }
 
-/**
- * Remove all suggestion elements from the DOM
- */
-function clearAllSuggestionElements() {
-    // Clear the suggestion container
-    const suggestionsContainer = document.getElementById('suggested-responses');
-    if (suggestionsContainer) {
-        suggestionsContainer.innerHTML = '';
-        suggestionsContainer.style.display = 'none';
-        suggestionsContainer.classList.remove('show');
-    }
-    
-    // Remove any suggestion buttons that might exist elsewhere
-    document.querySelectorAll('.suggested-response').forEach(button => {
-        button.remove();
-    });
-}
-
 // Initialize everything when page loads
 document.addEventListener('DOMContentLoaded', function() {
-    // Clear any suggestion elements first
-    clearAllSuggestionElements();
     initializeApp();
+    
+    // And run one more check after a delay to catch any dynamically added suggestions
+    setTimeout(forceRemoveSuggestions, 1000);
 });
 
-// Set up a MutationObserver to detect and remove any dynamically added suggestion elements
-const observer = new MutationObserver(mutations => {
-    mutations.forEach(mutation => {
-        if (mutation.addedNodes && mutation.addedNodes.length > 0) {
-            // Check for suggestion elements in added nodes
-            for (let i = 0; i < mutation.addedNodes.length; i++) {
-                const node = mutation.addedNodes[i];
-                if (node.nodeType === 1) { // Element node
-                    // Check if this is a suggestion element
-                    if (node.classList && node.classList.contains('suggested-response')) {
-                        node.remove();
-                    }
-                    // Also look for suggestion elements inside the added node
-                    const suggestionButtons = node.querySelectorAll('.suggested-response');
-                    suggestionButtons.forEach(button => button.remove());
-                }
-            }
-        }
-    });
-});
-
-// Start observing once DOM is loaded
+// Fallback for if DOMContentLoaded already fired
 if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', () => {
         observer.observe(document.body, { childList: true, subtree: true });
