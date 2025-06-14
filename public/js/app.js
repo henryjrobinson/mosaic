@@ -445,14 +445,61 @@ async function initializeApp() {
     }
 }
 
+/**
+ * Force remove any suggestion elements from the DOM
+ * This is a safety measure to ensure suggestions never appear
+ */
+function forceRemoveSuggestions() {
+    // Find and remove any suggestion elements
+    const suggestedResponses = document.getElementById('suggested-responses');
+    if (suggestedResponses) {
+        suggestedResponses.remove();
+        console.log('Forcibly removed suggestions container');
+    }
+    
+    // Remove any suggestion buttons that might have been added
+    const suggestionButtons = document.querySelectorAll('.suggested-response');
+    suggestionButtons.forEach(button => {
+        button.remove();
+        console.log('Removed suggestion button');
+    });
+}
+
 // Initialize everything when page loads
 document.addEventListener('DOMContentLoaded', function() {
+    // Force remove suggestions immediately
+    forceRemoveSuggestions();
+    
+    // Then initialize app
     initializeApp();
+    
+    // And run one more check after a delay to catch any dynamically added suggestions
+    setTimeout(forceRemoveSuggestions, 1000);
 });
 
-// Fallback for if DOMContentLoaded already fired
+// Set up a MutationObserver to watch for and remove any suggestion elements that might be added
+const observer = new MutationObserver(mutations => {
+    mutations.forEach(mutation => {
+        if (mutation.addedNodes && mutation.addedNodes.length > 0) {
+            // Check if any of the added nodes are suggestion elements
+            for (let i = 0; i < mutation.addedNodes.length; i++) {
+                const node = mutation.addedNodes[i];
+                if (node.id === 'suggested-responses' || 
+                    (node.classList && node.classList.contains('suggested-response'))) {
+                    node.remove();
+                    console.log('Removed dynamically added suggestion element');
+                }
+            }
+        }
+    });
+});
+
+// Start observing once DOM is loaded
 if (document.readyState === 'loading') {
-    // Do nothing, DOMContentLoaded will fire
+    document.addEventListener('DOMContentLoaded', () => {
+        observer.observe(document.body, { childList: true, subtree: true });
+    });
 } else {
+    observer.observe(document.body, { childList: true, subtree: true });
     initializeApp();
 }
