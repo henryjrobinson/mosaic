@@ -1,25 +1,29 @@
 # Memorial Mosaic Script Generation Quick Start Guide
 
-This guide provides a streamlined workflow for creating new conversation scripts for Memorial Mosaic using AI/LLM tools.
+This guide provides a streamlined workflow for creating new conversation scripts for Memorial Mosaic that help contributors create meaningful memorial tiles.
 
-## Step 1: Understand Your Users' Needs
+## Step 1: Identify the Memorial Tile Type
 
-Before generating a script, consider:
-- What type of memorial is needed (timeline, memory collection, family history, etc.)
-- Who will be using this script (spouse, child, friend, colleague)
-- What emotional tone is appropriate (recent loss vs. celebration of life)
-- What unique aspects of the person should be emphasized
+Before generating a script, identify the most appropriate tile type based on:
+- The **relationship** between contributor and deceased (spouse, child, friend, colleague)
+- **Available resources** (photos, voice recordings, writings, social media)
+- **Unique aspects** of their connection that should be emphasized
+- **Emotional context** of the contribution (recent loss vs. celebration of life)
 
 ## Step 2: Generate the Script
 
 ### Option A: Using ChatGPT or Similar LLM
 
-1. Copy the content from `docs/script_generation_prompt.md`
+1. Copy the content from `docs/script_generation_prompt.md` (Digital Legacy Memorial Conversation Generator)
 2. Paste it into ChatGPT, Claude, or your preferred LLM
-3. Add your specific requirements, such as:
+3. Add your specific requirements following the format in the example usage:
    ```
-   Create a script focused on collecting childhood memories of a grandparent.
-   The tone should be warm and nostalgic, with an emphasis on family traditions.
+   Generate a memorial conversation for the [relationship] of [name], a [age]-year-old [profession/descriptor] who passed away. Focus on creating a [specific tile type] that [purpose/goal].
+   ```
+
+   For example:
+   ```
+   Generate a memorial conversation for the sister of Emma Rodriguez, a 47-year-old teacher who passed away. Focus on creating a Childhood Memories tile that captures their shared experiences growing up.
    ```
 4. Review the generated JSON and make any necessary edits
 

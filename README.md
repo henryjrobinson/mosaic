@@ -31,17 +31,33 @@ This repository contains a clickable prototype that demonstrates the core concep
     - `conversation_schema.json` - Formal schema for conversation scripts
 - `memorial_mosaic_project_doc.md` - Full project concept and documentation
 
+## Memorial Tile System
+
+Memorial Mosaic uses a modular "tile" approach where each contributor adds a unique piece to the memorial based on their specific relationship to the deceased and available resources.
+
+### Tile Types Include:
+
+- **Family Photo Galleries** - For close family with personal photos
+- **Voice Recreation** - Using recordings to create interactive elements
+- **Personal Timeline** - Major life events and milestones
+- **Memory Collections** - Stories and anecdotes from friends
+- **Professional Legacy** - Work achievements and impact
+- **Community Impact** - Volunteer work and community involvement
+
 ## Script Generation System
 
-Memorial Mosaic includes a comprehensive system for generating conversation scripts using AI/LLM technologies:
+Memorial Mosaic includes a comprehensive system for generating relationship-specific conversation scripts using AI/LLM technologies:
 
 ### Creating New Scripts
 
-1. **Define your script needs**: Determine what type of memorial you want to create (timeline, memory collection, etc.)
+1. **Identify the appropriate tile type**: Based on the contributor's relationship (spouse, child, friend, colleague) and available resources (photos, recordings, etc.)
 
 2. **Use the LLM prompt**: Copy the content from `docs/script_generation_prompt.md` into your preferred LLM (like ChatGPT, Claude, etc.)
 
-3. **Customize the prompt**: Add specific requirements for your script (e.g., "Focus on collecting childhood memories" or "Create a script for a spouse's memorial")
+3. **Customize the prompt**: Follow the example format:
+   ```
+   Generate a memorial conversation for the [relationship] of [name], a [descriptor] who passed away. Focus on creating a [specific tile type] that [purpose/goal].
+   ```
 
 4. **Generate the script**: The LLM will generate a JSON-formatted conversation script following the defined schema
 
