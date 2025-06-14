@@ -1,0 +1,115 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Memorial Mosaic Conversation Script",
+  "description": "Schema for creating AI-guided conversation scripts for memorial creation",
+  "type": "object",
+  "required": ["title", "description", "conversation"],
+  "properties": {
+    "title": {
+      "type": "string",
+      "description": "The title of the conversation script",
+      "examples": ["Memorial Conversation", "Life Journey Timeline"]
+    },
+    "description": {
+      "type": "string",
+      "description": "Brief description of what this script helps create",
+      "examples": ["A script for a conversation about creating a memorial for a loved one"]
+    },
+    "id": {
+      "type": "string",
+      "description": "Optional unique identifier for the script. If not provided, one will be generated from the title",
+      "examples": ["memorial_script", "timeline_script"]
+    },
+    "author": {
+      "type": "string",
+      "description": "Optional author of the script",
+      "examples": ["Memorial Mosaic Team", "John Doe"]
+    },
+    "version": {
+      "type": "string",
+      "description": "Optional version of the script",
+      "examples": ["1.0.0", "2.3.1"]
+    },
+    "tags": {
+      "type": "array",
+      "description": "Optional tags to categorize the script",
+      "items": {
+        "type": "string"
+      },
+      "examples": [["memorial", "loss", "remembrance"], ["timeline", "history", "biography"]]
+    },
+    "conversation": {
+      "type": "array",
+      "description": "The sequence of conversation steps between AI and user",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["type", "message"],
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": ["ai", "user"],
+            "description": "Whether this is an AI or user message"
+          },
+          "message": {
+            "type": "string",
+            "description": "The content of the message",
+            "examples": [
+              "Hello, I'm so sorry for your loss. I'm here to help you create a beautiful memorial for your loved one. Can you tell me their name?",
+              "His name was Ramon. Dr. Ramon Serrano."
+            ]
+          },
+          "final": {
+            "type": "boolean",
+            "description": "If true, indicates that this is the final message in the conversation and should trigger the memorial preview",
+            "default": false
+          },
+          "showExample": {
+            "type": "string",
+            "enum": ["existing", "current"],
+            "description": "If present, will show either the existing example memorial or the current progress after this message"
+          },
+          "delay": {
+            "type": "integer",
+            "description": "Optional delay in milliseconds before showing this message",
+            "default": 1500,
+            "minimum": 0
+          },
+          "addToMemorial": {
+            "type": "object",
+            "description": "Optional data to add to the memorial object being built",
+            "properties": {
+              "type": {
+                "type": "string",
+                "description": "Type of memorial data being added",
+                "examples": ["basic_info", "timeline_event", "memory", "photo"]
+              },
+              "data": {
+                "type": "object",
+                "description": "The data to be added to the memorial"
+              }
+            }
+          }
+        }
+      }
+    },
+    "memorialDefaults": {
+      "type": "object",
+      "description": "Optional default values for the memorial being created",
+      "properties": {
+        "templateId": {
+          "type": "string",
+          "description": "ID of the default template to use for this memorial"
+        },
+        "color": {
+          "type": "string",
+          "description": "Default color theme"
+        },
+        "font": {
+          "type": "string",
+          "description": "Default font family"
+        }
+      }
+    }
+  }
+}
