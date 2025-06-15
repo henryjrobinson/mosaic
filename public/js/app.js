@@ -466,17 +466,13 @@ async function initializeApp() {
 // Initialize everything when page loads
 document.addEventListener('DOMContentLoaded', function() {
     initializeApp();
-    
-    // And run one more check after a delay to catch any dynamically added suggestions
-    setTimeout(forceRemoveSuggestions, 1000);
 });
 
 // Fallback for if DOMContentLoaded already fired
 if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', () => {
-        observer.observe(document.body, { childList: true, subtree: true });
+        // Nothing extra needed here now
     });
 } else {
-    observer.observe(document.body, { childList: true, subtree: true });
     initializeApp();
 }
