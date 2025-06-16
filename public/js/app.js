@@ -382,11 +382,20 @@ function showExample(type) {
  */
 function advanceConversation() {
     const input = document.getElementById('chat-input');
+    if (!input) {
+        // If input doesn't exist, just try to advance to next step
+        if (currentStep < conversation.length) {
+            nextStep();
+        }
+        return;
+    }
+    
     const message = input.value.trim();
+    const objectPreview = document.getElementById('object-preview');
     
     if (message) {
         handleInput();
-    } else if (currentStep < conversation.length && !document.getElementById('object-preview').classList.contains('show')) {
+    } else if (currentStep < conversation.length && (!objectPreview || !objectPreview.classList.contains('show'))) {
         nextStep();
     }
 }
@@ -435,52 +444,69 @@ function setupEventListeners() {
  * Initialize the application
  */
 async function initializeApp() {
-    setupEventListeners();
-    
-    // Show initial loading message
-    showSystemMessage('Initializing application...', 'info');
-    
     try {
-        // Fetch available scripts
-        showSystemMessage('Loading available scripts...', 'info');
-        availableScripts = await fetchAvailableScripts();
-        
-        if (availableScripts.length === 0) {
-            showError('No scripts available');
-            return;
+        // First verify that critical DOM elements exist
+        const chatMessages = document.getElementById('chat-messages');
+        if (!chatMessages) {
+            console.error('Critical DOM element missing: chat-messages');
+            return; // Exit if critical elements are missing
         }
         
-        showSystemMessage(`Found ${availableScripts.length} scripts`, 'success');
+        // Set up event listeners after confirming DOM is ready
+        setupEventListeners();
         
-        // Check if a specific script was selected from admin page
-        const activeScriptId = getActiveScriptFromAdmin();
+        // Show initial loading message
+        showSystemMessage('Initializing application...', 'info');
         
-        if (activeScriptId) {
-            // Load the script selected in admin
-            await loadScript(activeScriptId);
-            const activeScript = availableScripts.find(s => s.id === activeScriptId);
-            showSystemMessage(`Loaded script: ${activeScript?.title || activeScriptId}`, 'success');
-        } else {
-            // Load the default script if none selected
-            await loadScript(availableScripts[0].id);
-            showSystemMessage(`Loaded script: ${availableScripts[0].title}`, 'success');
+        try {
+            // Fetch available scripts
+            showSystemMessage('Loading available scripts...', 'info');
+            availableScripts = await fetchAvailableScripts();
+            
+            if (!availableScripts || availableScripts.length === 0) {
+                showError('No scripts available');
+                return;
+            }
+            
+            showSystemMessage(`Found ${availableScripts.length} scripts`, 'success');
+            
+            // Check if a specific script was selected from admin page
+            const activeScriptId = getActiveScriptFromAdmin();
+            
+            if (activeScriptId) {
+                // Load the script selected in admin
+                await loadScript(activeScriptId);
+                const activeScript = availableScripts.find(s => s.id === activeScriptId);
+                showSystemMessage(`Loaded script: ${activeScript?.title || activeScriptId}`, 'success');
+            } else {
+                // Load the default script if none selected
+                await loadScript(availableScripts[0].id);
+                showSystemMessage(`Loaded script: ${availableScripts[0].title}`, 'success');
+            }
+        } catch (error) {
+            console.error('Error during script loading:', error);
+            showError(`Script loading failed: ${error.message}`);
         }
     } catch (error) {
-        console.error('Error during initialization:', error);
-        showError(`Initialization failed: ${error.message}`);
+        console.error('Critical application initialization error:', error);
+        // Use alert as a last resort if DOM elements for messages don't exist
+        alert(`Memorial Mosaic failed to initialize: ${error.message}`);
     }
 }
 
-// Initialize everything when page loads
-document.addEventListener('DOMContentLoaded', function() {
-    initializeApp();
-});
+// Safely initialize when DOM is ready
+function safeInitialize() {
+    try {
+        initializeApp();
+    } catch (error) {
+        console.error('Failed to initialize application:', error);
+    }
+}
 
-// Fallback for if DOMContentLoaded already fired
+// Initialize everything when page loads - using a safer approach
 if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', () => {
-        // Nothing extra needed here now
-    });
+    document.addEventListener('DOMContentLoaded', safeInitialize);
 } else {
-    initializeApp();
+    // DOM already loaded, initialize now
+    setTimeout(safeInitialize, 0); // Use setTimeout to prevent blocking the main thread
 }
