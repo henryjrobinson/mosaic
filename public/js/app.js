@@ -397,30 +397,38 @@ function advanceConversation() {
 function setupEventListeners() {
     // Click anywhere to advance conversation (except on buttons/inputs that have their own handlers)
     document.addEventListener('click', function(e) {
+        const objectPreview = document.getElementById('object-preview');
         if (!e.target.closest('.action-btn') && 
             !e.target.closest('.close-btn') && 
             !e.target.closest('.object-preview') &&
             currentStep < conversation.length && 
-            !document.getElementById('object-preview').classList.contains('show')) {
+            objectPreview && !objectPreview.classList.contains('show')) {
             advanceConversation();
         }
     });
     
-    document.getElementById('chat-input').addEventListener('keypress', function(e) {
-        if (e.key === 'Enter') {
+    // Add event listeners only if elements exist
+    const chatInput = document.getElementById('chat-input');
+    if (chatInput) {
+        chatInput.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                advanceConversation();
+            }
+        });
+        
+        // Prevent the click anywhere from triggering when clicking input elements
+        chatInput.addEventListener('click', function(e) {
+            e.stopPropagation();
+        });
+    }
+    
+    const sendButton = document.querySelector('.send-btn');
+    if (sendButton) {
+        sendButton.addEventListener('click', function(e) {
+            e.stopPropagation();
             advanceConversation();
-        }
-    });
-    
-    // Prevent the click anywhere from triggering when clicking input elements
-    document.getElementById('chat-input').addEventListener('click', function(e) {
-        e.stopPropagation();
-    });
-    
-    document.querySelector('.send-btn').addEventListener('click', function(e) {
-        e.stopPropagation();
-        advanceConversation();
-    });
+        });
+    }
 }
 
 /**
