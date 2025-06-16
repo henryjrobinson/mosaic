@@ -10,17 +10,19 @@ let conversation = [];
  */
 async function fetchAvailableScripts() {
     try {
-        // Get scripts from server
+        console.log('Fetching available scripts...');
+        
+        // Get scripts from server - using relative paths that work on both localhost and Netlify
         const serverScripts = [
             {
                 id: 'memorial_script',
-                path: './scripts/memorial_script.json',
+                path: 'scripts/memorial_script.json',
                 title: 'Memorial Conversation',
                 source: 'server'
             },
             {
                 id: 'welcome_script',
-                path: './scripts/welcome_script.json',
+                path: 'scripts/welcome_script.json',
                 title: 'Welcome Tour',
                 source: 'server'
             }
@@ -35,11 +37,15 @@ async function fetchAvailableScripts() {
                     const scriptData = JSON.parse(localStorage.getItem(key));
                     const scriptId = key.replace('memorial_script_', '');
                     
+                    console.log(`Found local script: ${scriptId}`, scriptData);
+                    
                     localScripts.push({
                         id: scriptId,
                         title: scriptData.metadata?.title || scriptId,
+                        description: scriptData.metadata?.description || '',
                         source: 'local',
-                        data: scriptData
+                        data: scriptData,
+                        isLocal: true
                     });
                 } catch (e) {
                     console.error(`Error parsing script from localStorage (${key}):`, e);
@@ -50,15 +56,23 @@ async function fetchAvailableScripts() {
         // Combine scripts, with local versions taking precedence
         const combinedScripts = [...serverScripts];
         
+        if (localScripts.length > 0) {
+            console.log(`Found ${localScripts.length} local scripts to add/override`);
+        }
+        
         localScripts.forEach(localScript => {
+            console.log(`Processing local script: ${localScript.id}`);
             const existingIndex = combinedScripts.findIndex(s => s.id === localScript.id);
             if (existingIndex >= 0) {
+                console.log(`  - Replacing server script with local version: ${localScript.id}`);
                 combinedScripts[existingIndex] = localScript;
             } else {
+                console.log(`  - Adding new local script: ${localScript.id}`);
                 combinedScripts.push(localScript);
             }
         });
         
+        console.log('Final available scripts:', combinedScripts);
         return combinedScripts;
     } catch (error) {
         console.error('Error fetching available scripts:', error);
@@ -79,29 +93,54 @@ async function loadScript(scriptId) {
             throw new Error(`Script with ID ${scriptId} not found`);
         }
         
+        let scriptData;
+        
         // Check if this is a locally stored script (from admin page)
         if (scriptToLoad.source === 'local' && scriptToLoad.data) {
             console.log(`Loading script ${scriptToLoad.title} from localStorage`);
-            const scriptData = scriptToLoad.data;
-            initializeConversation(scriptData);
-            return scriptData;
+            scriptData = scriptToLoad.data;
+        } else {
+            // Otherwise load from server path
+            console.log(`Found script: ${scriptToLoad.title}, fetching from ${scriptToLoad.path}`);
+            const response = await fetch(scriptToLoad.path);
+            if (!response.ok) {
+                throw new Error(`Failed to load script: ${response.statusText}`);
+            }
+            
+            scriptData = await response.json();
+            console.log('Script data loaded successfully from server');
+        }
+
+        // Ensure script data has consistent structure
+        if (!scriptData) {
+            throw new Error('Script data is empty or invalid');
         }
         
-        // Otherwise load from server path
-        console.log(`Found script: ${scriptToLoad.title}, fetching from ${scriptToLoad.path}`);
-        const response = await fetch(scriptToLoad.path);
-        if (!response.ok) {
-            throw new Error(`Failed to load script: ${response.statusText}`);
+        console.log('Script data structure:', scriptData);
+        
+        // Standardize script data structure
+        if (!scriptData.metadata) {
+            console.log('Adding missing metadata to script');
+            scriptData.metadata = {
+                title: scriptData.title || 'Untitled Script',
+                description: scriptData.description || '',
+                id: scriptId
+            };
         }
         
-        const scriptData = await response.json();
-        console.log('Script data loaded successfully:', scriptData.title);
+        // Check if conversation array exists
+        if (!scriptData.conversation || !Array.isArray(scriptData.conversation) || scriptData.conversation.length === 0) {
+            throw new Error('Script has no valid conversation data');
+        }
         
         // Reset conversation state
         currentStep = 0;
         conversationData = scriptData;
-        conversation = scriptData.conversation || [];
+        conversation = scriptData.conversation;
         console.log(`Conversation steps loaded: ${conversation.length}`);
+        
+        // Store this as the active script
+        localStorage.setItem('active_script_id', scriptId);
         
         // Clear any existing messages
         document.getElementById('chat-messages').innerHTML = '';
@@ -260,6 +299,61 @@ function hideSuggestions() {
 }
 
 /**
+ * Process buttons for conversation step
+ * @param {Object} step - The current conversation step
+ */
+function processButtons(step) {
+    const btnContainer = document.getElementById('buttons-container');
+    if (!btnContainer) return;
+    
+    btnContainer.innerHTML = '';
+    btnContainer.style.display = 'none';
+    
+    if (!step.buttons || step.buttons.length === 0) {
+        return;
+    }
+    
+    step.buttons.forEach(button => {
+        const btn = document.createElement('button');
+        btn.textContent = button.text;
+        btn.classList.add('action-btn');
+        
+        if (button.action === 'input') {
+            // Create input mode
+            btn.addEventListener('click', function() {
+                setInputMode(button.placeholder || 'Type your response...');
+            });
+        } 
+        else if (button.action === 'next') {
+            // Simple next step
+            btn.addEventListener('click', nextStep);
+        } 
+        else if (button.action === 'show') {
+            // Show something
+            btn.addEventListener('click', function() {
+                if (button.target === 'example') {
+                    showExample(button.example_type || 'existing');
+                } else if (button.target === 'memorial') {
+                    showExample('memorial');
+                }
+            });
+        }
+        else if (button.action === 'viewMemorial') {
+            // Show the memorial wireframe directly
+            btn.addEventListener('click', function() {
+                showMemorialPreview();
+            });
+        }
+        
+        btnContainer.appendChild(btn);
+    });
+    
+    if (step.buttons.length > 0) {
+        btnContainer.style.display = 'flex';
+    }
+}
+
+/**
  * Advances to the next step in the conversation
  */
 function nextStep() {
@@ -290,6 +384,11 @@ function nextStep() {
                     setTimeout(() => {
                         showExample(step.showExample);
                     }, 2000);
+                }
+                
+                // Process buttons for this step if present
+                if (step.buttons && step.buttons.length > 0) {
+                    processButtons(step);
                 }
             }, 1500);
         } else {
@@ -361,16 +460,21 @@ function showExample(type) {
             <div style="font-size: 0.8em; margin-top: 5px;">Dr. Sarah Chen (1952-2023)</div>
             <div style="font-size: 0.7em; margin-top: 10px; color: #999;">Timeline, Gallery, Impact Stories, Voice Memories</div>
         `;
+    } else if (type === 'memorial') {
+        // Open the memorial wireframe in a new window/iframe
+        showMemorialPreview();
+        return;
     } else {
-        document.getElementById('preview-title').textContent = 'Current Progress';
-        document.getElementById('preview-description').textContent = 'Your memorial is just getting started. As we continue, you\'ll see your objects appear here.';
+        // For 'current' type, also show the memorial preview directly
+        document.getElementById('preview-title').textContent = 'Current Progress: Memorial Preview';
+        document.getElementById('preview-description').textContent = 'View the current memorial based on information collected so far.';
         
         const placeholder = document.querySelector('.object-placeholder');
         placeholder.innerHTML = `
-            <div class="placeholder-icon">🚧</div>
-            <div><strong>In Progress</strong></div>
-            <div style="font-size: 0.8em; margin-top: 5px;">Dr. Ramon Serrano</div>
-            <div style="font-size: 0.7em; margin-top: 10px; color: #999;">Building your Life Journey Timeline...</div>
+            <div class="placeholder-icon">🏆</div>
+            <div><strong>Dr. Ramon Serrano Memorial</strong></div>
+            <div style="font-size: 0.8em; margin-top: 5px;">Ready to view</div>
+            <button class="action-btn" style="margin-top: 15px; background-color: #3498db; color: white; padding: 8px 15px; border: none; border-radius: 5px; cursor: pointer;" onclick="showMemorialPreview()">View Now</button>
         `;
     }
     
@@ -401,14 +505,169 @@ function advanceConversation() {
 }
 
 /**
+ * Shows the memorial wireframe in a better integrated UI
+ */
+function showMemorialPreview() {
+    // Create modal container if it doesn't exist
+    let memorialModal = document.getElementById('memorial-preview-modal');
+    
+    if (!memorialModal) {
+        // Create outer container
+        memorialModal = document.createElement('div');
+        memorialModal.id = 'memorial-preview-modal';
+        memorialModal.className = 'memorial-modal';
+        
+        // Style outer container - not full screen anymore
+        memorialModal.style.position = 'fixed';
+        memorialModal.style.top = '50%';
+        memorialModal.style.left = '50%';
+        memorialModal.style.transform = 'translate(-50%, -50%)';
+        memorialModal.style.width = '90%';
+        memorialModal.style.maxWidth = '1200px';
+        memorialModal.style.height = '85vh';
+        memorialModal.style.backgroundColor = '#fff';
+        memorialModal.style.borderRadius = '15px';
+        memorialModal.style.boxShadow = '0 10px 30px rgba(0, 0, 0, 0.3)';
+        memorialModal.style.zIndex = '9999';
+        memorialModal.style.display = 'flex';
+        memorialModal.style.flexDirection = 'column';
+        memorialModal.style.opacity = '0';
+        memorialModal.style.transition = 'all 0.3s ease';
+        memorialModal.style.transform = 'translate(-50%, -48%) scale(0.98)';
+        
+        // Create a header bar that matches the chat interface styling
+        const headerBar = document.createElement('div');
+        headerBar.style.display = 'flex';
+        headerBar.style.justifyContent = 'space-between';
+        headerBar.style.alignItems = 'center';
+        headerBar.style.padding = '10px 20px';
+        headerBar.style.backgroundColor = '#3498db'; // Match the app's color theme
+        headerBar.style.borderTopLeftRadius = '15px';
+        headerBar.style.borderTopRightRadius = '15px';
+        headerBar.style.color = 'white';
+        
+        // Add title to header
+        const title = document.createElement('h2');
+        title.textContent = 'Dr. Ramon Serrano - Memorial Preview';
+        title.style.margin = '0';
+        title.style.fontSize = '18px';
+        headerBar.appendChild(title);
+        
+        // Add close button to header
+        const closeBtn = document.createElement('button');
+        closeBtn.innerHTML = '&times; Return to Chat';
+        closeBtn.style.background = 'transparent';
+        closeBtn.style.color = 'white';
+        closeBtn.style.border = '1px solid white';
+        closeBtn.style.borderRadius = '5px';
+        closeBtn.style.padding = '5px 12px';
+        closeBtn.style.cursor = 'pointer';
+        closeBtn.style.fontSize = '14px';
+        closeBtn.onmouseover = function() { 
+            this.style.backgroundColor = 'rgba(255,255,255,0.2)';
+        };
+        closeBtn.onmouseout = function() { 
+            this.style.backgroundColor = 'transparent';
+        };
+        closeBtn.onclick = closeMemorialPreview;
+        headerBar.appendChild(closeBtn);
+        
+        // Add the header to the modal
+        memorialModal.appendChild(headerBar);
+        
+        // Create content container
+        const contentContainer = document.createElement('div');
+        contentContainer.style.flex = '1';
+        contentContainer.style.position = 'relative';
+        contentContainer.style.overflow = 'hidden';
+        
+        // Add iframe to display the memorial
+        const iframe = document.createElement('iframe');
+        iframe.src = 'ramon-memorial-wireframe.html';
+        iframe.style.width = '100%';
+        iframe.style.height = '100%';
+        iframe.style.border = 'none';
+        contentContainer.appendChild(iframe);
+        memorialModal.appendChild(contentContainer);
+        
+        // Add a backdrop
+        const backdrop = document.createElement('div');
+        backdrop.style.position = 'fixed';
+        backdrop.style.top = '0';
+        backdrop.style.left = '0';
+        backdrop.style.right = '0';
+        backdrop.style.bottom = '0';
+        backdrop.style.backgroundColor = 'rgba(0, 0, 0, 0.6)';
+        backdrop.style.zIndex = '9998';
+        backdrop.style.opacity = '0';
+        backdrop.style.transition = 'opacity 0.3s ease';
+        backdrop.onclick = closeMemorialPreview; // Close when backdrop is clicked
+        backdrop.id = 'memorial-backdrop';
+        
+        document.body.appendChild(backdrop);
+        document.body.appendChild(memorialModal);
+        
+        // Trigger animation
+        setTimeout(() => {
+            backdrop.style.opacity = '1';
+            memorialModal.style.opacity = '1';
+            memorialModal.style.transform = 'translate(-50%, -50%) scale(1)';
+        }, 10);
+    } else {
+        // Re-show existing modal with animation
+        const backdrop = document.getElementById('memorial-backdrop');
+        memorialModal.style.display = 'flex';
+        backdrop.style.display = 'block';
+        
+        setTimeout(() => {
+            backdrop.style.opacity = '1';
+            memorialModal.style.opacity = '1';
+            memorialModal.style.transform = 'translate(-50%, -50%) scale(1)';
+        }, 10);
+    }
+    
+    // Add a class to the body to prevent scrolling
+    document.body.style.overflow = 'hidden';
+}
+
+/**
+ * Closes the memorial wireframe preview
+ */
+function closeMemorialPreview() {
+    const memorialModal = document.getElementById('memorial-preview-modal');
+    const backdrop = document.getElementById('memorial-backdrop');
+    
+    if (memorialModal) {
+        // Run close animation
+        memorialModal.style.opacity = '0';
+        memorialModal.style.transform = 'translate(-50%, -45%) scale(0.95)';
+        
+        if (backdrop) {
+            backdrop.style.opacity = '0';
+        }
+        
+        // Wait for animation to complete before hiding
+        setTimeout(() => {
+            memorialModal.style.display = 'none';
+            if (backdrop) backdrop.style.display = 'none';
+        }, 300);
+    }
+    
+    // Re-enable scrolling
+    document.body.style.overflow = 'auto';
+}
+
+/**
  * Sets up all event listeners for the application
  */
 function setupEventListeners() {
     // Click anywhere to advance conversation (except on buttons/inputs that have their own handlers)
     document.addEventListener('click', function(e) {
         const objectPreview = document.getElementById('object-preview');
+        const memorialModal = document.getElementById('memorial-preview-modal');
         if (!e.target.closest('.action-btn') && 
             !e.target.closest('.close-btn') && 
+            (!memorialModal || memorialModal.style.display === 'none') &&
             !e.target.closest('.object-preview') &&
             currentStep < conversation.length && 
             objectPreview && !objectPreview.classList.contains('show')) {

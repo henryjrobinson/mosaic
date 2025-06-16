@@ -107,11 +107,20 @@ function readAndValidateScript(file) {
             try {
                 const script = JSON.parse(event.target.result);
                 
-                // Validate script format
-                if (!script.metadata || !script.conversation) {
-                    showStatusMessage(`Invalid script format in ${file.name}`, 'error');
+                // Validate script format - need at minimum a title and conversation array
+                if (!script.title || !script.conversation || !Array.isArray(script.conversation)) {
+                    showStatusMessage(`Invalid script format in ${file.name}. Script must have title and conversation array.`, 'error');
                     resolve(null);
                     return;
+                }
+                
+                // Make sure script format is consistent
+                // If there's already a metadata property, use it, otherwise create one from the top-level properties
+                if (!script.metadata) {
+                    script.metadata = {
+                        title: script.title,
+                        description: script.description || ''
+                    };
                 }
                 
                 resolve(script);
@@ -137,14 +146,35 @@ function readAndValidateScript(file) {
  * @param {string} filename - The original filename
  */
 async function saveScript(script, filename) {
-    // Extract script ID from filename or use the one in metadata
-    const scriptId = script.metadata.id || filename.replace('.json', '');
+    // Generate a script ID if none exists
+    let scriptId;
+    if (script.metadata && script.metadata.id) {
+        scriptId = script.metadata.id;
+    } else {
+        // Create a clean ID from the filename or script title
+        scriptId = (filename.replace('.json', '') || script.title || 'custom_script')
+            .toLowerCase()
+            .replace(/\s+/g, '_');
+
+        // Add ID to metadata
+        if (!script.metadata) {
+            script.metadata = {};
+        }
+        script.metadata.id = scriptId;
+    }
+    
     const scriptKey = `memorial_script_${scriptId}`;
+    
+    // Log the script we're saving for debugging
+    console.log(`Saving script with ID: ${scriptId}`, script);
     
     // Store the script in localStorage for demo purposes
     try {
         localStorage.setItem(scriptKey, JSON.stringify(script));
-        console.log(`Script '${script.metadata.title}' saved to localStorage`);
+        console.log(`Script '${script.metadata.title}' saved to localStorage with key ${scriptKey}`);
+        
+        // Activate this script for immediate use
+        localStorage.setItem('active_script_id', scriptId);
         return true;
     } catch (error) {
         console.error('Error saving script to localStorage:', error);
@@ -188,7 +218,8 @@ async function loadAvailableScripts() {
  */
 async function fetchScriptsFromServer() {
     try {
-        const response = await fetch('./scripts/');
+        const response = await fetch('scripts/');
+        // Using path without leading ./ for Netlify compatibility
         
         if (!response.ok) {
             throw new Error(`HTTP error! status: ${response.status}`);

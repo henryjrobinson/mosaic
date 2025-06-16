@@ -34,6 +34,9 @@
                 </div>
             </div>
             
+            <!-- Buttons for conversation options -->
+            <div class="buttons-container" id="buttons-container" style="display: none; flex-wrap: wrap; gap: 10px; margin-bottom: 15px;"></div>
+            
             <div class="input-container">
                 <input type="text" class="chat-input" placeholder="Type your message..." id="chat-input">
                 <button class="send-btn" onclick="handleInput()">Send</button>
@@ -53,6 +56,7 @@
                 <div style="font-size: 0.8em; margin-top: 5px;">Will show generated content here</div>
             </div>
             <p id="preview-description">This is where the completed memorial object would be displayed.</p>
+            <button class="action-btn" style="margin-top: 20px; background-color: #3498db; color: white; padding: 10px 20px; border: none; border-radius: 5px; cursor: pointer;" onclick="showExample('memorial')">View Full Memorial</button>
         </div>
     </div>
 
