@@ -2,12 +2,20 @@
   publish = "public"
   command = "echo 'No build required - static files'"
 
+# Explicit root redirect to ensure the correct index file is served
+[[redirects]]
+  from = "/"
+  to = "/index.html"
+  status = 200
+  force = true
+
 # Only apply SPA redirect for non-file routes
 [[redirects]]
   from = "/*"
   to = "/index.html"
   status = 200
   conditions = {Path = {match_not = ["**.js", "**.css", "**.html", "**.json", "**.ico", "**.jpg", "**.png", "**.svg", "**.gif"]}}
+
 
 # Set reasonable cache timings
 [[headers]]
