@@ -2,15 +2,37 @@
   publish = "public"
   command = "echo 'No build required - static files'"
 
+# Only apply SPA redirect for non-file routes
 [[redirects]]
   from = "/*"
   to = "/index.html"
   status = 200
+  conditions = {Path = {match_not = ["**.js", "**.css", "**.html", "**.json", "**.ico", "**.jpg", "**.png", "**.svg", "**.gif"]}}
 
-# Ensure assets in the public directory are accessible
+# Set reasonable cache timings
+[[headers]]
+  for = "/*.js"
+  [headers.values]
+    Cache-Control = "public, max-age=3600" # 1 hour for JS files
+
+[[headers]]
+  for = "/*.css"
+  [headers.values]
+    Cache-Control = "public, max-age=3600" # 1 hour for CSS files
+
+[[headers]]
+  for = "/*.html"
+  [headers.values]
+    Cache-Control = "public, max-age=0" # No caching for HTML files
+
+[[headers]]
+  for = "/*.json"
+  [headers.values]
+    Cache-Control = "public, max-age=0" # No caching for JSON files
+
 [[headers]]
   for = "/*"
   [headers.values]
     X-Frame-Options = "DENY"
     X-XSS-Protection = "1; mode=block"
-    Cache-Control = "public, max-age=31536000"
+
