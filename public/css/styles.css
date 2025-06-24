@@ -633,37 +633,37 @@ body {
 /* Individual agent styles with better contrast */
 .agent-badge.agent-collaborator {
     background: linear-gradient(135deg, #3498db, #2980b9);
-    color: #ffffff;
+    color: white;
     border-color: rgba(255,255,255,0.3);
 }
 
 .agent-badge.agent-archiver {
     background: linear-gradient(135deg, #9b59b6, #8e44ad);
-    color: #ffffff;
+    color: white;
     border-color: rgba(255,255,255,0.3);
 }
 
 .agent-badge.agent-curator {
     background: linear-gradient(135deg, #e67e22, #d35400);
-    color: #ffffff;
+    color: white;
     border-color: rgba(255,255,255,0.3);
 }
 
 .agent-badge.agent-analyst {
     background: linear-gradient(135deg, #27ae60, #229954);
-    color: #ffffff;
+    color: white;
     border-color: rgba(255,255,255,0.3);
 }
 
 .agent-badge.agent-storyteller {
     background: linear-gradient(135deg, #f39c12, #e67e22);
-    color: #ffffff;
+    color: white;
     border-color: rgba(255,255,255,0.3);
 }
 
 .agent-badge.agent-technical {
     background: linear-gradient(135deg, #34495e, #2c3e50);
-    color: #ffffff;
+    color: white;
     border-color: rgba(255,255,255,0.3);
 }
 
@@ -682,6 +682,7 @@ body {
 .agent-name {
     font-weight: 700;
     letter-spacing: 0.3px;
+    color: #ffffff;
 }
 
 .agent-roles {
@@ -914,5 +915,9 @@ body {
     font-size: 0.75rem;
     font-weight: 600;
     margin-bottom: 4px;
-    color: inherit;
+    color: #000000;
+}
+
+.agent-metadata-card .agent-name {
+    color: #000000;
 }
