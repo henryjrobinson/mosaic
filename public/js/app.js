@@ -1,82 +1,157 @@
 // Global variables
 let currentStep = 0;
-let conversationData = {};
-let availableScripts = [];
-let conversation = [];
+let script = null;
+let isTyping = false;
+let scriptList = [];
+let agentMetadataVisible = true; // Track toggle state
+
+// Initialize the application
+document.addEventListener('DOMContentLoaded', function() {
+    fetchAvailableScripts();
+    
+    // Initialize agent metadata toggle
+    const toggle = document.getElementById('agent-metadata-toggle');
+    if (toggle) {
+        toggle.addEventListener('change', function() {
+            agentMetadataVisible = this.checked;
+            toggleAgentMetadataVisibility();
+        });
+        // Set initial state
+        agentMetadataVisible = toggle.checked;
+    }
+    
+    const input = document.getElementById('chat-input');
+    if (input) {
+        input.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                handleInput();
+            }
+        });
+    }
+    
+    // Add global click listener for manual conversation advancement
+    document.addEventListener('click', function(e) {
+        // Skip if user is clicking on UI elements or input fields
+        if (e.target.closest('input, button, select, textarea, .toggle-switch, .script-option, #agent-metadata-toggle')) {
+            return;
+        }
+        
+        // Only advance if we have a script loaded and not at the end
+        if (script && script.conversation && currentStep < script.conversation.length) {
+            console.log('Manual advancement triggered by click');
+            nextStep();
+        }
+    });
+});
 
 /**
- * Fetches the list of available scripts from both server and localStorage
- * @returns {Promise} Promise resolving to array of script metadata
+ * Fetches available scripts including enhanced agent conversation files
  */
 async function fetchAvailableScripts() {
     try {
-        console.log('Fetching available scripts...');
+        console.log('fetchAvailableScripts: Loading scripts from file system only...');
         
-        // Get scripts from server - using relative paths that work on both localhost and Netlify
-        const serverScripts = [
-            {
-                id: 'memorial_script',
-                path: 'scripts/memorial_script.json',
-                title: 'Memorial Conversation',
-                source: 'server'
-            },
-            {
-                id: 'welcome_script',
-                path: 'scripts/welcome_script.json',
-                title: 'Welcome Tour',
-                source: 'server'
-            }
+        const scriptPaths = [
+            'scripts/welcome_script.json',
+            'scripts/memorial_script.json',
+            'scripts/ramon_memorial_script.json',
+            'json-enhancement/memorial-conversation-agents.json',
+            'json-enhancement/nursing-home-conversation.json'
         ];
         
-        // Get scripts from localStorage (added via admin page)
-        const localScripts = [];
-        for (let i = 0; i < localStorage.length; i++) {
-            const key = localStorage.key(i);
-            if (key.startsWith('memorial_script_')) {
-                try {
-                    const scriptData = JSON.parse(localStorage.getItem(key));
-                    const scriptId = key.replace('memorial_script_', '');
-                    
-                    console.log(`Found local script: ${scriptId}`, scriptData);
-                    
-                    localScripts.push({
-                        id: scriptId,
-                        title: scriptData.metadata?.title || scriptId,
-                        description: scriptData.metadata?.description || '',
-                        source: 'local',
-                        data: scriptData,
-                        isLocal: true
-                    });
-                } catch (e) {
-                    console.error(`Error parsing script from localStorage (${key}):`, e);
+        console.log('fetchAvailableScripts: Attempting to load paths:', scriptPaths);
+        
+        const scriptPromises = scriptPaths.map(async (path) => {
+            try {
+                console.log(`fetchAvailableScripts: Fetching ${path}...`);
+                const response = await fetch(path);
+                if (response.ok) {
+                    const data = await response.json();
+                    console.log(`fetchAvailableScripts: Successfully loaded ${path}:`, data.title);
+                    return {
+                        title: data.title || path.split('/').pop().replace('.json', ''),
+                        description: data.description || 'No description available',
+                        path: path,
+                        tags: data.tags || [],
+                        hasAgents: data.conversation && data.conversation.some(step => step.activeAgents)
+                    };
+                } else {
+                    console.log(`fetchAvailableScripts: Failed to load ${path}: ${response.status} ${response.statusText}`);
                 }
+            } catch (error) {
+                console.log(`fetchAvailableScripts: Error loading ${path}:`, error);
             }
-        }
-        
-        // Combine scripts, with local versions taking precedence
-        const combinedScripts = [...serverScripts];
-        
-        if (localScripts.length > 0) {
-            console.log(`Found ${localScripts.length} local scripts to add/override`);
-        }
-        
-        localScripts.forEach(localScript => {
-            console.log(`Processing local script: ${localScript.id}`);
-            const existingIndex = combinedScripts.findIndex(s => s.id === localScript.id);
-            if (existingIndex >= 0) {
-                console.log(`  - Replacing server script with local version: ${localScript.id}`);
-                combinedScripts[existingIndex] = localScript;
-            } else {
-                console.log(`  - Adding new local script: ${localScript.id}`);
-                combinedScripts.push(localScript);
-            }
+            return null;
         });
         
-        console.log('Final available scripts:', combinedScripts);
-        return combinedScripts;
+        const results = await Promise.all(scriptPromises);
+        scriptList = results.filter(script => script !== null);
+        
+        console.log('fetchAvailableScripts: Final script list:', scriptList);
+        displayScriptSelection();
     } catch (error) {
-        console.error('Error fetching available scripts:', error);
-        return [];
+        console.error('Error fetching scripts:', error);
+        addMessage('ai', 'Sorry, I had trouble loading the available scripts. Please refresh the page to try again.');
+    }
+}
+
+/**
+ * Display script selection interface
+ */
+function displayScriptSelection() {
+    const messagesContainer = document.getElementById('chat-messages');
+    messagesContainer.innerHTML = ''; // Clear existing content
+    
+    // Welcome message
+    addMessage('ai', `Hello! I'm your Memorial Mosaic assistant. I have ${scriptList.length} conversation scripts available. Please select one to begin:`, false, []);
+    
+    // Create script selection buttons
+    const scriptDiv = document.createElement('div');
+    scriptDiv.className = 'script-selection';
+    scriptDiv.style.cssText = 'margin: 20px 0; display: flex; flex-direction: column; gap: 10px;';
+    
+    scriptList.forEach((script, index) => {
+        const button = document.createElement('button');
+        button.className = 'script-btn';
+        button.style.cssText = `
+            padding: 15px;
+            border: 2px solid #3498db;
+            background: white;
+            border-radius: 8px;
+            cursor: pointer;
+            text-align: left;
+            transition: all 0.3s ease;
+        `;
+        
+        const agentBadge = script.hasAgents ? ' 🤖 Enhanced with Agent Data' : '';
+        
+        button.innerHTML = `
+            <div style="font-weight: bold; color: #2c3e50; margin-bottom: 5px;">
+                ${script.title}${agentBadge}
+            </div>
+            <div style="font-size: 0.9em; color: #7f8c8d; line-height: 1.4;">
+                ${script.description}
+            </div>
+            ${script.tags.length > 0 ? `<div style="margin-top: 8px; font-size: 0.8em; color: #95a5a6;">Tags: ${script.tags.join(', ')}</div>` : ''}
+        `;
+        
+        button.addEventListener('click', () => loadScript(script.path));
+        button.addEventListener('mouseover', () => {
+            button.style.background = '#f8f9fa';
+            button.style.borderColor = '#2980b9';
+        });
+        button.addEventListener('mouseout', () => {
+            button.style.background = 'white';
+            button.style.borderColor = '#3498db';
+        });
+        
+        scriptDiv.appendChild(button);
+    });
+    
+    // Add the script selection to the last message
+    const lastMessage = messagesContainer.lastElementChild;
+    if (lastMessage) {
+        lastMessage.querySelector('.message-bubble').appendChild(scriptDiv);
     }
 }
 
@@ -88,29 +163,23 @@ async function fetchAvailableScripts() {
 async function loadScript(scriptId) {
     try {
         console.log(`Attempting to load script with ID: ${scriptId}`);
-        const scriptToLoad = availableScripts.find(script => script.id === scriptId);
+        const scriptToLoad = scriptList.find(script => script.path === scriptId);
         if (!scriptToLoad) {
             throw new Error(`Script with ID ${scriptId} not found`);
         }
         
         let scriptData;
         
-        // Check if this is a locally stored script (from admin page)
-        if (scriptToLoad.source === 'local' && scriptToLoad.data) {
-            console.log(`Loading script ${scriptToLoad.title} from localStorage`);
-            scriptData = scriptToLoad.data;
-        } else {
-            // Otherwise load from server path
-            console.log(`Found script: ${scriptToLoad.title}, fetching from ${scriptToLoad.path}`);
-            const response = await fetch(scriptToLoad.path);
-            if (!response.ok) {
-                throw new Error(`Failed to load script: ${response.statusText}`);
-            }
-            
-            scriptData = await response.json();
-            console.log('Script data loaded successfully from server');
+        // Otherwise load from server path
+        console.log(`Found script: ${scriptToLoad.title}, fetching from ${scriptToLoad.path}`);
+        const response = await fetch(scriptToLoad.path);
+        if (!response.ok) {
+            throw new Error(`Failed to load script: ${response.statusText}`);
         }
-
+        
+        scriptData = await response.json();
+        console.log('Script data loaded successfully from server');
+        
         // Ensure script data has consistent structure
         if (!scriptData) {
             throw new Error('Script data is empty or invalid');
@@ -135,12 +204,8 @@ async function loadScript(scriptId) {
         
         // Reset conversation state
         currentStep = 0;
-        conversationData = scriptData;
-        conversation = scriptData.conversation;
-        console.log(`Conversation steps loaded: ${conversation.length}`);
-        
-        // Store this as the active script
-        localStorage.setItem('active_script_id', scriptId);
+        script = scriptData;
+        console.log(`Conversation steps loaded: ${scriptData.conversation.length}`);
         
         // Clear any existing messages
         document.getElementById('chat-messages').innerHTML = '';
@@ -195,21 +260,14 @@ function showError(message) {
 }
 
 /**
- * Checks for active script selected in admin page
- * @returns {string|null} - ID of active script or null if none selected
- */
-function getActiveScriptFromAdmin() {
-    return localStorage.getItem('active_script_id');
-}
-
-/**
  * Chat UI Controller
  * @param {string} type - 'ai' or 'user'
  * @param {string} message - Message content
  * @param {boolean} showSuggestions - Whether to show suggested responses (now disabled per requirements)
  * @param {Array} suggestions - Array of suggestion strings
+ * @param {Object} activeAgents - Agent information for AI messages
  */
-function addMessage(type, message, showSuggestions = false, suggestions = []) {
+function addMessage(type, message, showSuggestions = false, suggestions = [], activeAgents = null) {
     const messagesContainer = document.getElementById('chat-messages');
     
     const messageDiv = document.createElement('div');
@@ -221,7 +279,17 @@ function addMessage(type, message, showSuggestions = false, suggestions = []) {
     
     const bubble = document.createElement('div');
     bubble.className = 'message-bubble';
-    bubble.textContent = message;
+    
+    // Add agent information for AI messages
+    if (type === 'ai' && activeAgents && agentMetadataVisible) {
+        const agentInfo = createAgentInfoDisplay(activeAgents);
+        bubble.appendChild(agentInfo);
+    }
+    
+    const messageContent = document.createElement('div');
+    messageContent.className = 'message-content';
+    messageContent.textContent = message;
+    bubble.appendChild(messageContent);
     
     if (type === 'ai') {
         messageDiv.appendChild(avatar);
@@ -243,529 +311,319 @@ function addMessage(type, message, showSuggestions = false, suggestions = []) {
 }
 
 /**
- * Displays suggested responses as clickable buttons
- * @param {Array} suggestions - Array of suggestion strings
- * Note: This function is completely disabled
+ * Creates the agent information display for AI messages
+ * @param {Object} activeAgents - Object containing active agent information
+ * @returns {HTMLElement} DOM element with agent info
  */
-function showSuggestedResponses(suggestions) {
-    // Force remove any existing suggestion elements
-    const suggestionsContainer = document.getElementById('suggested-responses');
-    if (suggestionsContainer) {
-        // Empty the container and remove any classes that would make it visible
-        suggestionsContainer.innerHTML = '';
-        suggestionsContainer.classList.remove('show');
-    }
-    return;
-}
-
-/**
- * Handles when a suggestion is selected
- * @param {string} text - The suggestion text
- * Note: This function has been disabled per requirements but kept for reference
- */
-function selectSuggestion(text) {
-    // Suggestions functionality disabled
-    return;
-}
-
-/**
- * Shows the typing indicator
- */
-function showTyping() {
-    document.getElementById('typing-indicator').classList.add('show');
-}
-
-/**
- * Hides the typing indicator
- */
-function hideTyping() {
-    document.getElementById('typing-indicator').classList.remove('show');
-}
-
-/**
- * Hides the suggested responses
- * Completely removes any suggestion elements
- */
-function hideSuggestions() {
-    const suggestionsContainer = document.getElementById('suggested-responses');
-    if (suggestionsContainer) {
-        // Empty and hide
-        suggestionsContainer.innerHTML = '';
-        suggestionsContainer.classList.remove('show');
+function createAgentInfoDisplay(activeAgents) {
+    const agentContainer = document.createElement('div');
+    agentContainer.className = agentMetadataVisible ? 'agent-info' : 'agent-info hidden';
+    
+    const agentNames = Object.keys(activeAgents);
+    
+    if (agentNames.length === 1) {
+        // Single agent
+        const agentName = agentNames[0];
+        const agentBadge = createAgentBadge(agentName, activeAgents[agentName]);
+        agentContainer.appendChild(agentBadge);
         
-        // Add style to ensure it's really hidden
-        suggestionsContainer.style.display = 'none';
+        // Add metadata if available
+        if (hasAgentMetadata(activeAgents[agentName])) {
+            const metadataContainer = createAgentMetadata(activeAgents[agentName]);
+            agentContainer.appendChild(metadataContainer);
+        }
+    } else if (agentNames.length > 1) {
+        // Multiple agents
+        const collaborativeLabel = document.createElement('div');
+        collaborativeLabel.className = 'collaborative-label';
+        collaborativeLabel.textContent = 'Collaborative Response';
+        agentContainer.appendChild(collaborativeLabel);
+        
+        const agentsList = document.createElement('div');
+        agentsList.className = 'agents-list';
+        
+        agentNames.forEach(agentName => {
+            const agentBadge = createAgentBadge(agentName, activeAgents[agentName], true);
+            agentsList.appendChild(agentBadge);
+        });
+        
+        agentContainer.appendChild(agentsList);
+        
+        // Add collaborative metadata if any agent has metadata
+        const hasMetadata = agentNames.some(name => hasAgentMetadata(activeAgents[name]));
+        if (hasMetadata) {
+            const metadataContainer = createCollaborativeMetadata(activeAgents);
+            agentContainer.appendChild(metadataContainer);
+        }
     }
+    
+    return agentContainer;
 }
 
 /**
- * Process buttons for conversation step
- * @param {Object} step - The current conversation step
+ * Creates a badge for an individual agent
+ * @param {string} agentName - Name of the agent
+ * @param {Object} agentData - Agent's role data
+ * @param {boolean} isCompact - Whether to show compact version
+ * @returns {HTMLElement} Agent badge element
  */
-function processButtons(step) {
-    const btnContainer = document.getElementById('buttons-container');
-    if (!btnContainer) return;
+function createAgentBadge(agentName, agentData, isCompact = false) {
+    const badge = document.createElement('div');
+    badge.className = `agent-badge agent-${agentName}`;
     
-    btnContainer.innerHTML = '';
-    btnContainer.style.display = 'none';
+    const agentIcon = getAgentIcon(agentName);
+    const agentDisplayName = getAgentDisplayName(agentName);
     
-    if (!step.buttons || step.buttons.length === 0) {
+    if (isCompact) {
+        badge.innerHTML = `
+            <span class="agent-icon">${agentIcon}</span>
+            <span class="agent-name">${agentDisplayName}</span>
+        `;
+    } else {
+        const roles = getAllAgentRoles(agentData);
+        badge.innerHTML = `
+            <div class="agent-header">
+                <span class="agent-icon">${agentIcon}</span>
+                <span class="agent-name">${agentDisplayName}</span>
+            </div>
+            <div class="agent-roles">${roles.join(' • ')}</div>
+        `;
+    }
+    
+    // Add tooltip with detailed information
+    badge.title = createAgentTooltip(agentName, agentData);
+    
+    return badge;
+}
+
+/**
+ * Gets the icon for an agent type
+ * @param {string} agentName - Name of the agent
+ * @returns {string} Icon character
+ */
+function getAgentIcon(agentName) {
+    const agentIcons = {
+        'collaborator': '🤝',
+        'archiver': '📚',
+        'curator': '🎨',
+        'analyst': '📊',
+        'storyteller': '📖',
+        'technical': '⚙️',
+        'default': '🤖'
+    };
+    return agentIcons[agentName] || agentIcons.default;
+}
+
+/**
+ * Gets the display name for an agent
+ * @param {string} agentName - Name of the agent
+ * @returns {string} Human-readable display name
+ */
+function getAgentDisplayName(agentName) {
+    const displayNames = {
+        'collaborator': 'Collaborator',
+        'archiver': 'Memory Keeper',
+        'curator': 'Content Curator',
+        'analyst': 'Data Analyst',
+        'storyteller': 'Storyteller',
+        'technical': 'Technical Lead'
+    };
+    return displayNames[agentName] || agentName.charAt(0).toUpperCase() + agentName.slice(1);
+}
+
+/**
+ * Extracts all roles from agent data
+ * @param {Object} agentData - Agent's role information
+ * @returns {Array} Array of role descriptions
+ */
+function getAllAgentRoles(agentData) {
+    const roles = [];
+    Object.keys(agentData).forEach(roleType => {
+        if (Array.isArray(agentData[roleType])) {
+            roles.push(...agentData[roleType]);
+        }
+    });
+    return roles;
+}
+
+/**
+ * Creates tooltip text for an agent
+ * @param {string} agentName - Name of the agent
+ * @param {Object} agentData - Agent's role data
+ * @returns {string} Tooltip text
+ */
+function createAgentTooltip(agentName, agentData) {
+    const displayName = getAgentDisplayName(agentName);
+    const tooltip = [`${displayName} is actively:`];
+    
+    Object.keys(agentData).forEach(roleType => {
+        if (Array.isArray(agentData[roleType]) && agentData[roleType].length > 0) {
+            tooltip.push(`${roleType.charAt(0).toUpperCase() + roleType.slice(1)}: ${agentData[roleType].join(', ')}`);
+        }
+    });
+    
+    return tooltip.join('\n');
+}
+
+/**
+ * Check if agent has metadata beyond just roles
+ * @param {Object} agentData - Agent's role and metadata information
+ * @returns {boolean} Whether the agent has metadata
+ */
+function hasAgentMetadata(agentData) {
+    const metadataKeys = ['extraction', 'analysis', 'outputs', 'storing', 'privateStorage', 
+                          'updating', 'flagging', 'retrieving', 'building', 'preparing'];
+    return metadataKeys.some(key => agentData[key] && agentData[key].length > 0);
+}
+
+/**
+ * Create metadata display for single agent
+ * @param {Object} agentData - Agent's role and metadata information
+ * @returns {HTMLElement} Agent metadata container
+ */
+function createAgentMetadata(agentData) {
+    const metadataContainer = document.createElement('div');
+    metadataContainer.className = 'agent-metadata';
+    
+    // Define metadata sections with labels and styling
+    const metadataSections = [
+        { key: 'extraction', label: 'Extracting', class: '' },
+        { key: 'analysis', label: 'Analyzing', class: '' },
+        { key: 'outputs', label: 'Outputting', class: '' },
+        { key: 'storing', label: 'Storing', class: '' },
+        { key: 'updating', label: 'Updating', class: 'update' },
+        { key: 'retrieving', label: 'Retrieving', class: '' },
+        { key: 'building', label: 'Building', class: '' },
+        { key: 'preparing', label: 'Preparing', class: '' },
+        { key: 'privateStorage', label: 'Private Data', class: 'private' },
+        { key: 'flagging', label: 'Flags', class: 'flag' }
+    ];
+    
+    metadataSections.forEach(section => {
+        if (agentData[section.key] && agentData[section.key].length > 0) {
+            const sectionDiv = document.createElement('div');
+            sectionDiv.className = 'metadata-section';
+            
+            const label = document.createElement('span');
+            label.className = 'metadata-label';
+            label.textContent = section.label;
+            sectionDiv.appendChild(label);
+            
+            const itemsContainer = document.createElement('div');
+            itemsContainer.className = 'metadata-items';
+            
+            agentData[section.key].forEach(item => {
+                const itemElement = document.createElement('span');
+                itemElement.className = `metadata-item ${section.class}`;
+                
+                // Handle different types of metadata items
+                if (typeof item === 'string') {
+                    itemElement.textContent = item;
+                } else if (typeof item === 'object') {
+                    // For structured data, show a summary
+                    itemElement.textContent = item.name || item.category || JSON.stringify(item).substring(0, 30) + '...';
+                    itemElement.title = JSON.stringify(item, null, 2);
+                }
+                
+                itemsContainer.appendChild(itemElement);
+            });
+            
+            sectionDiv.appendChild(itemsContainer);
+            metadataContainer.appendChild(sectionDiv);
+        }
+    });
+    
+    return metadataContainer;
+}
+
+/**
+ * Create collaborative metadata display
+ * @param {Object} activeAgents - Object containing active agent information
+ * @returns {HTMLElement} Collaborative metadata container
+ */
+function createCollaborativeMetadata(activeAgents) {
+    const collaborativeMetadata = document.createElement('div');
+    collaborativeMetadata.className = 'collaborative-metadata';
+    
+    Object.keys(activeAgents).forEach(agentName => {
+        const agentData = activeAgents[agentName];
+        if (hasAgentMetadata(agentData)) {
+            const agentCard = document.createElement('div');
+            agentCard.className = `agent-metadata-card agent-${agentName.toLowerCase()}`;
+            
+            const agentHeader = document.createElement('div');
+            agentHeader.className = 'agent-name';
+            agentHeader.textContent = getAgentDisplayName(agentName);
+            agentCard.appendChild(agentHeader);
+            
+            const metadata = createAgentMetadata(agentData);
+            agentCard.appendChild(metadata);
+            
+            collaborativeMetadata.appendChild(agentCard);
+        }
+    });
+    
+    return collaborativeMetadata;
+}
+
+/**
+ * Toggle agent metadata visibility
+ */
+function toggleAgentMetadataVisibility() {
+    const agentInfoElements = document.querySelectorAll('.agent-info');
+    agentInfoElements.forEach(element => {
+        if (agentMetadataVisible) {
+            element.classList.remove('hidden');
+        } else {
+            element.classList.add('hidden');
+        }
+    });
+}
+
+/**
+ * Proceeds to the next step in the conversation
+ */
+function nextStep() {
+    console.log('nextStep() called - currentStep:', currentStep, 'total steps:', script ? script.conversation.length : 'no script');
+    
+    if (!script || !script.conversation) {
+        console.error('nextStep() - No script or conversation loaded');
         return;
     }
     
-    step.buttons.forEach(button => {
-        const btn = document.createElement('button');
-        btn.textContent = button.text;
-        btn.classList.add('action-btn');
+    if (script.conversation.length > currentStep) {
+        const currentStepData = script.conversation[currentStep];
+        console.log('nextStep() - Processing step:', currentStep, 'data:', currentStepData);
         
-        if (button.action === 'input') {
-            // Create input mode
-            btn.addEventListener('click', function() {
-                setInputMode(button.placeholder || 'Type your response...');
-            });
-        } 
-        else if (button.action === 'next') {
-            // Simple next step
-            btn.addEventListener('click', nextStep);
-        } 
-        else if (button.action === 'show') {
-            // Show something
-            btn.addEventListener('click', function() {
-                if (button.target === 'example') {
-                    showExample(button.example_type || 'existing');
-                } else if (button.target === 'memorial') {
-                    showExample('memorial');
-                }
-            });
-        }
-        else if (button.action === 'viewMemorial') {
-            // Show the memorial wireframe directly
-            btn.addEventListener('click', function() {
-                showMemorialPreview();
-            });
-        }
+        const message = currentStepData.message;
+        const messageType = currentStepData.type || 'ai'; // Use actual type from step data
+        const activeAgents = currentStepData.activeAgents;
         
-        btnContainer.appendChild(btn);
-    });
-    
-    if (step.buttons.length > 0) {
-        btnContainer.style.display = 'flex';
-    }
-}
-
-/**
- * Advances to the next step in the conversation
- */
-function nextStep() {
-    if (currentStep < conversation.length) {
-        const step = conversation[currentStep];
-        
-        // Remove any suggestions from the step data
-        if (step.suggestions) {
-            // Delete the suggestions property completely to ensure it's never processed
-            delete step.suggestions;
-        }
-        
-        if (step.type === 'ai') {
-            showTyping();
-            setTimeout(() => {
-                hideTyping();
-                // Always pass false and empty array for suggestions to ensure they never show
-                addMessage('ai', step.message, false, []);
-                
-                if (step.final) {
-                    setTimeout(() => {
-                        showObjectPreview();
-                    }, 2000);
-                }
-                
-                // Check if we should show an example
-                if (step.showExample) {
-                    setTimeout(() => {
-                        showExample(step.showExample);
-                    }, 2000);
-                }
-                
-                // Process buttons for this step if present
-                if (step.buttons && step.buttons.length > 0) {
-                    processButtons(step);
-                }
-            }, 1500);
-        } else {
-            // No need to call hideSuggestions since we've permanently removed them
-            addMessage('user', step.message);
-        }
+        addMessage(messageType, message, false, [], activeAgents);
         
         currentStep++;
+        console.log('nextStep() - Advanced to step:', currentStep);
+    } else {
+        console.log('nextStep() - Reached end of conversation');
     }
 }
 
 /**
- * Handles user input from the chat interface
+ * Handles user input
  */
 function handleInput() {
     const input = document.getElementById('chat-input');
-    const message = input.value.trim();
+    const userInput = input.value.trim();
     
-    if (message) {
-        // Removed hideSuggestions call as suggestions functionality is disabled
-        addMessage('user', message);
+    if (userInput) {
+        addMessage('user', userInput);
+        
+        // Clear input field
         input.value = '';
         
+        // Simulate AI response after a delay
         setTimeout(() => {
             nextStep();
         }, 1000);
     }
-}
-
-/**
- * Shows the object preview modal with timeline content
- */
-function showObjectPreview() {
-    document.getElementById('preview-title').textContent = 'Life Journey Timeline - Preview';
-    document.getElementById('preview-description').textContent = 'Your Life Journey Timeline is ready! This interactive timeline will showcase the major milestones of your 49 years together, with photos and stories from each period.';
-    
-    const placeholder = document.querySelector('.object-placeholder');
-    placeholder.innerHTML = `
-        <div class="placeholder-icon">📅</div>
-        <div><strong>Life Journey Timeline</strong></div>
-        <div style="font-size: 0.8em; margin-top: 5px;">1976-2025: 49 Years Together</div>
-        <div style="font-size: 0.7em; margin-top: 10px; color: #999;">Interactive timeline with photos, stories, and milestones</div>
-    `;
-    
-    document.getElementById('object-preview').classList.add('show');
-    document.getElementById('tap-hint').style.display = 'none';
-}
-
-/**
- * Closes the object preview modal
- */
-function closePreview() {
-    document.getElementById('object-preview').classList.remove('show');
-}
-
-/**
- * Shows example memorials
- * @param {string} type - 'existing' or 'current'
- */
-function showExample(type) {
-    if (type === 'existing') {
-        document.getElementById('preview-title').textContent = 'Example: Complete Memorial Mosaic';
-        document.getElementById('preview-description').textContent = 'This is an example of a complete memorial with multiple objects created by family and friends.';
-        
-        const placeholder = document.querySelector('.object-placeholder');
-        placeholder.innerHTML = `
-            <div class="placeholder-icon">🏛️</div>
-            <div><strong>Example Memorial</strong></div>
-            <div style="font-size: 0.8em; margin-top: 5px;">Dr. Sarah Chen (1952-2023)</div>
-            <div style="font-size: 0.7em; margin-top: 10px; color: #999;">Timeline, Gallery, Impact Stories, Voice Memories</div>
-        `;
-    } else if (type === 'memorial') {
-        // Open the memorial wireframe in a new window/iframe
-        showMemorialPreview();
-        return;
-    } else {
-        // For 'current' type, also show the memorial preview directly
-        document.getElementById('preview-title').textContent = 'Current Progress: Memorial Preview';
-        document.getElementById('preview-description').textContent = 'View the current memorial based on information collected so far.';
-        
-        const placeholder = document.querySelector('.object-placeholder');
-        placeholder.innerHTML = `
-            <div class="placeholder-icon">🏆</div>
-            <div><strong>Dr. Ramon Serrano Memorial</strong></div>
-            <div style="font-size: 0.8em; margin-top: 5px;">Ready to view</div>
-            <button class="action-btn" style="margin-top: 15px; background-color: #3498db; color: white; padding: 8px 15px; border: none; border-radius: 5px; cursor: pointer;" onclick="showMemorialPreview()">View Now</button>
-        `;
-    }
-    
-    document.getElementById('object-preview').classList.add('show');
-}
-
-/**
- * Convenience function to advance the conversation via click or input
- */
-function advanceConversation() {
-    const input = document.getElementById('chat-input');
-    if (!input) {
-        // If input doesn't exist, just try to advance to next step
-        if (currentStep < conversation.length) {
-            nextStep();
-        }
-        return;
-    }
-    
-    const message = input.value.trim();
-    const objectPreview = document.getElementById('object-preview');
-    
-    if (message) {
-        handleInput();
-    } else if (currentStep < conversation.length && (!objectPreview || !objectPreview.classList.contains('show'))) {
-        nextStep();
-    }
-}
-
-/**
- * Shows the memorial wireframe in a better integrated UI
- */
-function showMemorialPreview() {
-    // Create modal container if it doesn't exist
-    let memorialModal = document.getElementById('memorial-preview-modal');
-    
-    if (!memorialModal) {
-        // Create outer container
-        memorialModal = document.createElement('div');
-        memorialModal.id = 'memorial-preview-modal';
-        memorialModal.className = 'memorial-modal';
-        
-        // Style outer container - not full screen anymore
-        memorialModal.style.position = 'fixed';
-        memorialModal.style.top = '50%';
-        memorialModal.style.left = '50%';
-        memorialModal.style.transform = 'translate(-50%, -50%)';
-        memorialModal.style.width = '90%';
-        memorialModal.style.maxWidth = '1200px';
-        memorialModal.style.height = '85vh';
-        memorialModal.style.backgroundColor = '#fff';
-        memorialModal.style.borderRadius = '15px';
-        memorialModal.style.boxShadow = '0 10px 30px rgba(0, 0, 0, 0.3)';
-        memorialModal.style.zIndex = '9999';
-        memorialModal.style.display = 'flex';
-        memorialModal.style.flexDirection = 'column';
-        memorialModal.style.opacity = '0';
-        memorialModal.style.transition = 'all 0.3s ease';
-        memorialModal.style.transform = 'translate(-50%, -48%) scale(0.98)';
-        
-        // Create a header bar that matches the chat interface styling
-        const headerBar = document.createElement('div');
-        headerBar.style.display = 'flex';
-        headerBar.style.justifyContent = 'space-between';
-        headerBar.style.alignItems = 'center';
-        headerBar.style.padding = '10px 20px';
-        headerBar.style.backgroundColor = '#3498db'; // Match the app's color theme
-        headerBar.style.borderTopLeftRadius = '15px';
-        headerBar.style.borderTopRightRadius = '15px';
-        headerBar.style.color = 'white';
-        
-        // Add title to header
-        const title = document.createElement('h2');
-        title.textContent = 'Dr. Ramon Serrano - Memorial Preview';
-        title.style.margin = '0';
-        title.style.fontSize = '18px';
-        headerBar.appendChild(title);
-        
-        // Add close button to header
-        const closeBtn = document.createElement('button');
-        closeBtn.innerHTML = '&times; Return to Chat';
-        closeBtn.style.background = 'transparent';
-        closeBtn.style.color = 'white';
-        closeBtn.style.border = '1px solid white';
-        closeBtn.style.borderRadius = '5px';
-        closeBtn.style.padding = '5px 12px';
-        closeBtn.style.cursor = 'pointer';
-        closeBtn.style.fontSize = '14px';
-        closeBtn.onmouseover = function() { 
-            this.style.backgroundColor = 'rgba(255,255,255,0.2)';
-        };
-        closeBtn.onmouseout = function() { 
-            this.style.backgroundColor = 'transparent';
-        };
-        closeBtn.onclick = closeMemorialPreview;
-        headerBar.appendChild(closeBtn);
-        
-        // Add the header to the modal
-        memorialModal.appendChild(headerBar);
-        
-        // Create content container
-        const contentContainer = document.createElement('div');
-        contentContainer.style.flex = '1';
-        contentContainer.style.position = 'relative';
-        contentContainer.style.overflow = 'hidden';
-        
-        // Add iframe to display the memorial
-        const iframe = document.createElement('iframe');
-        iframe.src = 'ramon-memorial-wireframe.html';
-        iframe.style.width = '100%';
-        iframe.style.height = '100%';
-        iframe.style.border = 'none';
-        contentContainer.appendChild(iframe);
-        memorialModal.appendChild(contentContainer);
-        
-        // Add a backdrop
-        const backdrop = document.createElement('div');
-        backdrop.style.position = 'fixed';
-        backdrop.style.top = '0';
-        backdrop.style.left = '0';
-        backdrop.style.right = '0';
-        backdrop.style.bottom = '0';
-        backdrop.style.backgroundColor = 'rgba(0, 0, 0, 0.6)';
-        backdrop.style.zIndex = '9998';
-        backdrop.style.opacity = '0';
-        backdrop.style.transition = 'opacity 0.3s ease';
-        backdrop.onclick = closeMemorialPreview; // Close when backdrop is clicked
-        backdrop.id = 'memorial-backdrop';
-        
-        document.body.appendChild(backdrop);
-        document.body.appendChild(memorialModal);
-        
-        // Trigger animation
-        setTimeout(() => {
-            backdrop.style.opacity = '1';
-            memorialModal.style.opacity = '1';
-            memorialModal.style.transform = 'translate(-50%, -50%) scale(1)';
-        }, 10);
-    } else {
-        // Re-show existing modal with animation
-        const backdrop = document.getElementById('memorial-backdrop');
-        memorialModal.style.display = 'flex';
-        backdrop.style.display = 'block';
-        
-        setTimeout(() => {
-            backdrop.style.opacity = '1';
-            memorialModal.style.opacity = '1';
-            memorialModal.style.transform = 'translate(-50%, -50%) scale(1)';
-        }, 10);
-    }
-    
-    // Add a class to the body to prevent scrolling
-    document.body.style.overflow = 'hidden';
-}
-
-/**
- * Closes the memorial wireframe preview
- */
-function closeMemorialPreview() {
-    const memorialModal = document.getElementById('memorial-preview-modal');
-    const backdrop = document.getElementById('memorial-backdrop');
-    
-    if (memorialModal) {
-        // Run close animation
-        memorialModal.style.opacity = '0';
-        memorialModal.style.transform = 'translate(-50%, -45%) scale(0.95)';
-        
-        if (backdrop) {
-            backdrop.style.opacity = '0';
-        }
-        
-        // Wait for animation to complete before hiding
-        setTimeout(() => {
-            memorialModal.style.display = 'none';
-            if (backdrop) backdrop.style.display = 'none';
-        }, 300);
-    }
-    
-    // Re-enable scrolling
-    document.body.style.overflow = 'auto';
-}
-
-/**
- * Sets up all event listeners for the application
- */
-function setupEventListeners() {
-    // Click anywhere to advance conversation (except on buttons/inputs that have their own handlers)
-    document.addEventListener('click', function(e) {
-        const objectPreview = document.getElementById('object-preview');
-        const memorialModal = document.getElementById('memorial-preview-modal');
-        if (!e.target.closest('.action-btn') && 
-            !e.target.closest('.close-btn') && 
-            (!memorialModal || memorialModal.style.display === 'none') &&
-            !e.target.closest('.object-preview') &&
-            currentStep < conversation.length && 
-            objectPreview && !objectPreview.classList.contains('show')) {
-            advanceConversation();
-        }
-    });
-    
-    // Add event listeners only if elements exist
-    const chatInput = document.getElementById('chat-input');
-    if (chatInput) {
-        chatInput.addEventListener('keypress', function(e) {
-            if (e.key === 'Enter') {
-                advanceConversation();
-            }
-        });
-        
-        // Prevent the click anywhere from triggering when clicking input elements
-        chatInput.addEventListener('click', function(e) {
-            e.stopPropagation();
-        });
-    }
-    
-    const sendButton = document.querySelector('.send-btn');
-    if (sendButton) {
-        sendButton.addEventListener('click', function(e) {
-            e.stopPropagation();
-            advanceConversation();
-        });
-    }
-}
-
-/**
- * Initialize the application
- */
-async function initializeApp() {
-    try {
-        // First verify that critical DOM elements exist
-        const chatMessages = document.getElementById('chat-messages');
-        if (!chatMessages) {
-            console.error('Critical DOM element missing: chat-messages');
-            return; // Exit if critical elements are missing
-        }
-        
-        // Set up event listeners after confirming DOM is ready
-        setupEventListeners();
-        
-        // Show initial loading message
-        showSystemMessage('Initializing application...', 'info');
-        
-        try {
-            // Fetch available scripts
-            showSystemMessage('Loading available scripts...', 'info');
-            availableScripts = await fetchAvailableScripts();
-            
-            if (!availableScripts || availableScripts.length === 0) {
-                showError('No scripts available');
-                return;
-            }
-            
-            showSystemMessage(`Found ${availableScripts.length} scripts`, 'success');
-            
-            // Check if a specific script was selected from admin page
-            const activeScriptId = getActiveScriptFromAdmin();
-            
-            if (activeScriptId) {
-                // Load the script selected in admin
-                await loadScript(activeScriptId);
-                const activeScript = availableScripts.find(s => s.id === activeScriptId);
-                showSystemMessage(`Loaded script: ${activeScript?.title || activeScriptId}`, 'success');
-            } else {
-                // Load the default script if none selected
-                await loadScript(availableScripts[0].id);
-                showSystemMessage(`Loaded script: ${availableScripts[0].title}`, 'success');
-            }
-        } catch (error) {
-            console.error('Error during script loading:', error);
-            showError(`Script loading failed: ${error.message}`);
-        }
-    } catch (error) {
-        console.error('Critical application initialization error:', error);
-        // Use alert as a last resort if DOM elements for messages don't exist
-        alert(`Memorial Mosaic failed to initialize: ${error.message}`);
-    }
-}
-
-// Safely initialize when DOM is ready
-function safeInitialize() {
-    try {
-        initializeApp();
-    } catch (error) {
-        console.error('Failed to initialize application:', error);
-    }
-}
-
-// Initialize everything when page loads - using a safer approach
-if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', safeInitialize);
-} else {
-    // DOM already loaded, initialize now
-    setTimeout(safeInitialize, 0); // Use setTimeout to prevent blocking the main thread
 }
