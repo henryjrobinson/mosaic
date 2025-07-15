@@ -30,8 +30,9 @@ Memorial Mosaic is an interactive web application designed to help people create
 ## In Progress Features
 
 ### Script Generation Tools
-- [ ] Script schema documentation
-- [ ] LLM-friendly script generation prompts
+- [x] Script schema documentation (docs/schema/conversation_schema.json)
+- [x] LLM-friendly script generation prompts (docs/script_generation_prompt.md)
+- [x] Script generation guide with best practices (docs/script_generation_guide.md)
 - [ ] Script template library
 - [ ] Script validation tools
 
