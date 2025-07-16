@@ -33,10 +33,11 @@
                         <span class="toggle-slider"></span>
                         <span class="toggle-label">🤖 Agent Details</span>
                     </label>
+                    <button class="action-btn" onclick="backToAgent()" style="margin-left: 15px;">← Back to Agent</button>
                 </div>
-                <button class="action-btn" onclick="showExample('existing')">View Example Memorial</button>
-                <button class="action-btn" onclick="showExample('current')">Current Progress</button>
-                <a href="admin.html" class="admin-link">Admin</a>
+                <button class="action-btn" onclick="showExample('existing')" style="display: none;">View Example Memorial</button>
+                <button class="action-btn" onclick="showExample('current')" style="display: none;">Current Progress</button>
+                <a href="admin.html" class="admin-link" style="display: none;">Admin</a>
             </div>
         </div>
         
@@ -59,8 +60,8 @@
             <div class="buttons-container" id="buttons-container" style="display: none; flex-wrap: wrap; gap: 10px; margin-bottom: 15px;"></div>
             
             <div class="input-container">
-                <input type="text" class="chat-input" placeholder="Type your message..." id="chat-input">
-                <button class="send-btn" onclick="handleInput()">Send</button>
+                <input type="text" class="chat-input" placeholder="Demo mode - Chat disabled" id="chat-input" disabled style="opacity: 0.5; cursor: not-allowed;">
+                <button class="send-btn" onclick="handleInput()" disabled style="opacity: 0.5; cursor: not-allowed;">Send</button>
             </div>
         </div>
     </div>

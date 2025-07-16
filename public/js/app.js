@@ -53,9 +53,7 @@ async function fetchAvailableScripts() {
         
         const scriptPaths = [
             'scripts/welcome_script.json',
-            'scripts/memorial_script.json',
-            'scripts/ramon_memorial_script.json',
-            'json-enhancement/memorial-conversation-agents.json',
+            'scripts/ramon-serrano-memorial-with primitives.json',
             'json-enhancement/nursing-home-conversation.json'
         ];
         
@@ -626,4 +624,35 @@ function handleInput() {
             nextStep();
         }, 1000);
     }
+}
+
+/**
+ * Returns user to the conversation loading screen
+ */
+function backToAgent() {
+    // Reset the application state
+    currentStep = 0;
+    script = null;
+    isTyping = false;
+    
+    // Clear the chat messages
+    const chatMessages = document.getElementById('chat-messages');
+    if (chatMessages) {
+        chatMessages.innerHTML = '';
+    }
+    
+    // Hide typing indicator
+    const typingIndicator = document.getElementById('typing-indicator');
+    if (typingIndicator) {
+        typingIndicator.style.display = 'none';
+    }
+    
+    // Hide buttons container
+    const buttonsContainer = document.getElementById('buttons-container');
+    if (buttonsContainer) {
+        buttonsContainer.style.display = 'none';
+    }
+    
+    // Show the script selection interface
+    fetchAvailableScripts();
 }
