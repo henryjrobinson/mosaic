@@ -123,15 +123,26 @@ function displayScriptSelection() {
         
         const agentBadge = script.hasAgents ? ' 🤖 Enhanced with Agent Data' : '';
         
-        button.innerHTML = `
-            <div style="font-weight: bold; color: #2c3e50; margin-bottom: 5px;">
-                ${script.title}${agentBadge}
-            </div>
-            <div style="font-size: 0.9em; color: #7f8c8d; line-height: 1.4;">
-                ${script.description}
-            </div>
-            ${script.tags.length > 0 ? `<div style="margin-top: 8px; font-size: 0.8em; color: #95a5a6;">Tags: ${script.tags.join(', ')}</div>` : ''}
-        `;
+        // Create title div
+        const titleDiv = document.createElement('div');
+        titleDiv.style.cssText = 'font-weight: bold; color: #2c3e50; margin-bottom: 5px;';
+        titleDiv.textContent = script.title + agentBadge;
+        
+        // Create description div
+        const descDiv = document.createElement('div');
+        descDiv.style.cssText = 'font-size: 0.9em; color: #7f8c8d; line-height: 1.4;';
+        descDiv.textContent = script.description;
+        
+        button.appendChild(titleDiv);
+        button.appendChild(descDiv);
+        
+        // Create tags div if tags exist
+        if (script.tags.length > 0) {
+            const tagsDiv = document.createElement('div');
+            tagsDiv.style.cssText = 'margin-top: 8px; font-size: 0.8em; color: #95a5a6;';
+            tagsDiv.textContent = 'Tags: ' + script.tags.join(', ');
+            button.appendChild(tagsDiv);
+        }
         
         button.addEventListener('click', () => loadScript(script.path));
         button.addEventListener('mouseover', () => {
@@ -373,19 +384,39 @@ function createAgentBadge(agentName, agentData, isCompact = false) {
     const agentDisplayName = getAgentDisplayName(agentName);
     
     if (isCompact) {
-        badge.innerHTML = `
-            <span class="agent-icon">${agentIcon}</span>
-            <span class="agent-name">${agentDisplayName}</span>
-        `;
+        const iconSpan = document.createElement('span');
+        iconSpan.className = 'agent-icon';
+        iconSpan.textContent = agentIcon;
+        
+        const nameSpan = document.createElement('span');
+        nameSpan.className = 'agent-name';
+        nameSpan.textContent = agentDisplayName;
+        
+        badge.appendChild(iconSpan);
+        badge.appendChild(nameSpan);
     } else {
         const roles = getAllAgentRoles(agentData);
-        badge.innerHTML = `
-            <div class="agent-header">
-                <span class="agent-icon">${agentIcon}</span>
-                <span class="agent-name">${agentDisplayName}</span>
-            </div>
-            <div class="agent-roles">${roles.join(' • ')}</div>
-        `;
+        
+        const headerDiv = document.createElement('div');
+        headerDiv.className = 'agent-header';
+        
+        const iconSpan = document.createElement('span');
+        iconSpan.className = 'agent-icon';
+        iconSpan.textContent = agentIcon;
+        
+        const nameSpan = document.createElement('span');
+        nameSpan.className = 'agent-name';
+        nameSpan.textContent = agentDisplayName;
+        
+        headerDiv.appendChild(iconSpan);
+        headerDiv.appendChild(nameSpan);
+        
+        const rolesDiv = document.createElement('div');
+        rolesDiv.className = 'agent-roles';
+        rolesDiv.textContent = roles.join(' • ');
+        
+        badge.appendChild(headerDiv);
+        badge.appendChild(rolesDiv);
     }
     
     // Add tooltip with detailed information
@@ -571,8 +602,10 @@ function toggleAgentMetadataVisibility() {
     const agentInfoElements = document.querySelectorAll('.agent-info');
     agentInfoElements.forEach(element => {
         if (agentMetadataVisible) {
+            element.style.display = '';
             element.classList.remove('hidden');
         } else {
+            element.style.display = 'none';
             element.classList.add('hidden');
         }
     });
